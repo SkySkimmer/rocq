@@ -11,6 +11,7 @@ cache:
   apt: true
   directories:
   - $HOME/.opam
+  - cache
 
 before_cache:
   - rm -rf $HOME/.opam/log/
@@ -30,6 +31,8 @@ env:
   # system is == 4.02.3
   - COMPILER="system"
   - CAMLP5_VER="6.14"
+  - PREFIX="-local"
+  - CACHE_NAME=default
   # Not ready yet for 8.7
   # - TEST_TARGET="ci-cpdt"
   # - TEST_TARGET="ci-metacoq"
@@ -41,8 +44,11 @@ matrix:
   - env: TEST_TARGET="ci-geocoq"
 
   include:
-    - env: TEST_TARGET="validate"                           TW="travis_wait"
+    - env: TEST_TARGET="install" PREFIX="-prefix cache"
       stage: build
+    - env: TEST_TARGET="validate"                           TW="travis_wait"
+      cache: false
+      stage: test
     - env: TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
       cache: false
       stage: test
@@ -164,11 +170,12 @@ script:
 
 - set -e
 - echo 'Configuring Coq...' && echo -en 'travis_fold:start:coq.config\\r'
-- ./configure -local -usecamlp5 -native-compiler yes ${EXTRA_CONF}
+- ./configure ${PREFIX} -usecamlp5 -native-compiler yes ${EXTRA_CONF}
 - echo -en 'travis_fold:end:coq.config\\r'
 
 - echo 'Building Coq...' && echo -en 'travis_fold:start:coq.build\\r'
-- make -j ${NJOBS}
+- if [ "(" -d cache ")" -a "(" "$PREFIX" != "-local" ")" ]; then rm -rf cache; fi
+- if [ ! "(" -d cache ")" ]; then make -j ${NJOBS}; else find cache; fi
 - echo -en 'travis_fold:end:coq.build\\r'
 
 - echo 'Running tests...' && echo -en 'travis_fold:start:coq.test\\r'
