@@ -64,101 +64,101 @@ matrix:
       stage: test
     - script: ./.travis.sh "ci-fiat-crypto"
       stage: test
-    # - script: ./.travis.sh "ci-fiat-parsers"
-    #   stage: test
-    # - script: ./.travis.sh "ci-flocq"
-    #   stage: test
-    # - script: ./.travis.sh "ci-formal-topology"
-    #   stage: test
-    # - script: ./.travis.sh "ci-hott"
-    #   stage: test
-    # - script: ./.travis.sh "ci-iris-coq"
-    #   stage: test
-    # - script: ./.travis.sh "ci-math-classes"
-    #   stage: test
-    # - script: ./.travis.sh "ci-math-comp"
-    #   stage: test
-    # - script: ./.travis.sh "ci-sf"
-    #   stage: test
-    # - script: ./.travis.sh "ci-unimath"
-    #   stage: test
-    # - script: ./.travis.sh "ci-vst"
-    #   stage: test
+    - script: ./.travis.sh "ci-fiat-parsers"
+      stage: test
+    - script: ./.travis.sh "ci-flocq"
+      stage: test
+    - script: ./.travis.sh "ci-formal-topology"
+      stage: test
+    - script: ./.travis.sh "ci-hott"
+      stage: test
+    - script: ./.travis.sh "ci-iris-coq"
+      stage: test
+    - script: ./.travis.sh "ci-math-classes"
+      stage: test
+    - script: ./.travis.sh "ci-math-comp"
+      stage: test
+    - script: ./.travis.sh "ci-sf"
+      stage: test
+    - script: ./.travis.sh "ci-unimath"
+      stage: test
+    - script: ./.travis.sh "ci-vst"
+      stage: test
 
 
-    # - stage: test
-    #   cache: false
-    #   env:
-    #   - TEST_TARGET="test-suite"
-    #   - EXTRA_CONF="-coqide opt -with-doc yes"
-    #   - EXTRA_OPAM="lablgtk-extras hevea"
-      # addons:
-      #   apt:
-      #     sources:
-      #     - avsm
-      #     packages: &extra-packages
-      #     - opam
-      #     - aspcud
-      #     - libgtk2.0-dev
-      #     - libgtksourceview2.0-dev
-      #     - texlive-latex-base
-      #     - texlive-latex-recommended
-      #     - texlive-latex-extra
-      #     - texlive-math-extra
-      #     - texlive-fonts-recommended
-      #     - texlive-fonts-extra
-      #     - latex-xcolor
-      #     - ghostscript
-      #     - transfig
-      #     - imagemagick
+    - stage: test
+      cache: false
+      script: ./.travis.sh "test-suite"
+      env:
+      - EXTRA_CONF="-coqide opt -with-doc yes"
+      - EXTRA_OPAM="lablgtk-extras hevea"
+      addons:
+        apt:
+          sources:
+          - avsm
+          packages: &extra-packages
+          - opam
+          - aspcud
+          - libgtk2.0-dev
+          - libgtksourceview2.0-dev
+          - texlive-latex-base
+          - texlive-latex-recommended
+          - texlive-latex-extra
+          - texlive-math-extra
+          - texlive-fonts-recommended
+          - texlive-fonts-extra
+          - latex-xcolor
+          - ghostscript
+          - transfig
+          - imagemagick
 
-    # - stage: test
-    #   cache: false
-    #   env:
-    #   - TEST_TARGET="test-suite"
-    #   - COMPILER="4.04.1"
-    #   - CAMLP5_VER="6.17"
-    #   - EXTRA_CONF="-coqide opt -with-doc yes"
-    #   - EXTRA_OPAM="lablgtk-extras hevea"
-      # addons:
-      #   apt:
-      #     sources:
-      #     - avsm
-      #     packages: *extra-packages
+    - stage: test
+      cache: false
+      script: ./.travis.sh "test-suite"
+      env:
+      - COMPILER="4.04.1"
+      - CAMLP5_VER="6.17"
+      - EXTRA_CONF="-coqide opt -with-doc yes"
+      - EXTRA_OPAM="lablgtk-extras hevea"
+      addons:
+        apt:
+          sources:
+          - avsm
+          packages: *extra-packages
 
-    # - stage: test
-    #   cache: false
-    #   env:
-    #   - TEST_TARGET="coqocaml"
-    #   - EXTRA_CONF="-coqide opt -warn-error"
-    #   - EXTRA_OPAM="lablgtk-extras hevea"
-    #   # dummy target
-    #   - BUILD_TARGET="clean"
-      # addons:
-      #   apt:
-      #     sources:
-      #     - avsm
-      #     packages: &coqide-packages
-      #     - opam
-      #     - aspcud
-      #     - libgtk2.0-dev
-      #     - libgtksourceview2.0-dev
+    - stage: test
+      cache: false
+      script: ./.travis.sh "coqocaml"
+      env:
+      - EXTRA_CONF="-coqide opt -warn-error"
+      - EXTRA_OPAM="lablgtk-extras hevea"
+      # dummy target
+      - BUILD_TARGET="clean"
+      addons:
+        apt:
+          sources:
+          - avsm
+          packages: &coqide-packages
+          - opam
+          - aspcud
+          - libgtk2.0-dev
+          - libgtksourceview2.0-dev
 
-    # - stage: test
-    #   cache: false
-    #   env:
-    #   - TEST_TARGET="coqocaml"
-    #   - COMPILER="4.04.1"
-    #   - CAMLP5_VER="6.17"
-    #   - EXTRA_CONF="-coqide opt -warn-error"
-    #   - EXTRA_OPAM="lablgtk-extras hevea"
-    #   # dummy target
-    #   - BUILD_TARGET="clean"
-      # addons:
-      #   apt:
-      #     sources:
-      #     - avsm
-      #     packages: *coqide-packages
+    - stage: test
+      cache: false
+      script: ./.travis.sh "coqocaml"
+      env:
+      - COMPILER="4.04.1"
+      - CAMLP5_VER="6.17"
+      - EXTRA_CONF="-coqide opt -warn-error"
+      - EXTRA_OPAM="lablgtk-extras hevea"
+      # dummy target
+      - BUILD_TARGET="clean"
+      addons:
+        apt:
+          sources:
+          - avsm
+          packages: *coqide-packages
 
 install:
 - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
@@ -166,8 +166,6 @@ install:
 - opam config list
 - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
 - opam list
-
-#script: ./.travis.sh
 
 # Testing Gitter webhook
 # notifications:
