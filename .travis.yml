@@ -3,56 +3,28 @@ dist: trusty
 # Travis builds are slower using sudo: false (the container-based
 # infrastructure) as of March 2017; see
 # https://github.com/coq/coq/pull/467 for some discussion.
-sudo: required
-
+#sudo: required
 # Until Ocaml becomes a language, we set a known one.
 language: c
 
 cache:
-  apt: true
+#  apt: true
   directories:
   - $HOME/.opam
-
-before_cache:
-  - rm -rf ~/.opam/log/
-
-addons:
-  apt:
-    sources:
-    - avsm
-    packages:
-    - opam
-    - aspcud
-    - gcc-multilib
-
+# addons:
+#   apt:
+#     sources:
+#     - avsm
+#     packages:
+#     - opam
+#     - aspcud
+#     - gcc-multilib
 env:
   global:
   - NJOBS=2
   # system is == 4.02.3
   - COMPILER="system"
   - CAMLP5_VER="6.14"
-  # Main test suites
-  matrix:
-  - TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
-  - TEST_TARGET="validate"                           TW="travis_wait"
-  - TEST_TARGET="validate"   COMPILER="4.02.3+32bit" TW="travis_wait"
-  - TEST_TARGET="ci-bedrock-src"
-  - TEST_TARGET="ci-bedrock-facade"
-  - TEST_TARGET="ci-color"
-  - TEST_TARGET="ci-compcert"
-  - TEST_TARGET="ci-coquelicot"
-  - TEST_TARGET="ci-geocoq"
-  - TEST_TARGET="ci-fiat-crypto"
-  - TEST_TARGET="ci-fiat-parsers"
-  - TEST_TARGET="ci-flocq"
-  - TEST_TARGET="ci-formal-topology"
-  - TEST_TARGET="ci-hott"
-  - TEST_TARGET="ci-iris-coq"
-  - TEST_TARGET="ci-math-classes"
-  - TEST_TARGET="ci-math-comp"
-  - TEST_TARGET="ci-sf"
-  - TEST_TARGET="ci-unimath"
-  - TEST_TARGET="ci-vst"
   # Not ready yet for 8.7
   # - TEST_TARGET="ci-cpdt"
   # - TEST_TARGET="ci-metacoq"
@@ -64,31 +36,51 @@ matrix:
   - env: TEST_TARGET="ci-geocoq"
 
   include:
-    # Full Coq test-suite with two compilers
+    - env: TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
+    - env: TEST_TARGET="validate"                           TW="travis_wait"
+    - env: TEST_TARGET="validate"   COMPILER="4.02.3+32bit" TW="travis_wait"
+    - env: TEST_TARGET="ci-bedrock-src"
+    - env: TEST_TARGET="ci-bedrock-facade"
+    - env: TEST_TARGET="ci-color"
+    - env: TEST_TARGET="ci-compcert"
+    - env: TEST_TARGET="ci-coquelicot"
+    - env: TEST_TARGET="ci-geocoq"
+    - env: TEST_TARGET="ci-fiat-crypto"
+    - env: TEST_TARGET="ci-fiat-parsers"
+    - env: TEST_TARGET="ci-flocq"
+    - env: TEST_TARGET="ci-formal-topology"
+    - env: TEST_TARGET="ci-hott"
+    - env: TEST_TARGET="ci-iris-coq"
+    - env: TEST_TARGET="ci-math-classes"
+    - env: TEST_TARGET="ci-math-comp"
+    - env: TEST_TARGET="ci-sf"
+    - env: TEST_TARGET="ci-unimath"
+    - env: TEST_TARGET="ci-vst"
+
+
     - env:
       - TEST_TARGET="test-suite"
       - EXTRA_CONF="-coqide opt -with-doc yes"
       - EXTRA_OPAM="lablgtk-extras hevea"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: &extra-packages
-          - opam
-          - aspcud
-          - libgtk2.0-dev
-          - libgtksourceview2.0-dev
-          - texlive-latex-base
-          - texlive-latex-recommended
-          - texlive-latex-extra
-          - texlive-math-extra
-          - texlive-fonts-recommended
-          - texlive-fonts-extra
-          - latex-xcolor
-          - ghostscript
-          - transfig
-          - imagemagick
-          - tipa
+      # addons:
+      #   apt:
+      #     sources:
+      #     - avsm
+      #     packages: &extra-packages
+      #     - opam
+      #     - aspcud
+      #     - libgtk2.0-dev
+      #     - libgtksourceview2.0-dev
+      #     - texlive-latex-base
+      #     - texlive-latex-recommended
+      #     - texlive-latex-extra
+      #     - texlive-math-extra
+      #     - texlive-fonts-recommended
+      #     - texlive-fonts-extra
+      #     - latex-xcolor
+      #     - ghostscript
+      #     - transfig
+      #     - imagemagick
 
     - env:
       - TEST_TARGET="test-suite"
@@ -96,11 +88,11 @@ matrix:
       - CAMLP5_VER="6.17"
       - EXTRA_CONF="-coqide opt -with-doc yes"
       - EXTRA_OPAM="lablgtk-extras hevea"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: *extra-packages
+      # addons:
+      #   apt:
+      #     sources:
+      #     - avsm
+      #     packages: *extra-packages
 
     # Ocaml warnings with two compilers
     - env:
@@ -109,15 +101,15 @@ matrix:
       - EXTRA_OPAM="lablgtk-extras hevea"
       # dummy target
       - BUILD_TARGET="clean"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: &coqide-packages
-          - opam
-          - aspcud
-          - libgtk2.0-dev
-          - libgtksourceview2.0-dev
+      # addons:
+      #   apt:
+      #     sources:
+      #     - avsm
+      #     packages: &coqide-packages
+      #     - opam
+      #     - aspcud
+      #     - libgtk2.0-dev
+      #     - libgtksourceview2.0-dev
 
     - env:
       - TEST_TARGET="coqocaml"
@@ -127,33 +119,34 @@ matrix:
       - EXTRA_OPAM="lablgtk-extras hevea"
       # dummy target
       - BUILD_TARGET="clean"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: *coqide-packages
+      # addons:
+      #   apt:
+      #     sources:
+      #     - avsm
+      #     packages: *coqide-packages
 
-install:
-- opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
-- eval $(opam config env)
-- opam config list
-- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
-- opam list
+# install:
+# - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
+# - eval $(opam config env)
+# - opam config list
+# - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
+# - opam list
 
 script:
 
 - set -e
 - echo 'Configuring Coq...' && echo -en 'travis_fold:start:coq.config\\r'
-- ./configure -local -usecamlp5 -native-compiler yes ${EXTRA_CONF}
+#- ./configure -local -usecamlp5 -native-compiler yes ${EXTRA_CONF}
 - echo -en 'travis_fold:end:coq.config\\r'
 
 - echo 'Building Coq...' && echo -en 'travis_fold:start:coq.build\\r'
-- make -j ${NJOBS}
+#- make -j ${NJOBS}
 - echo -en 'travis_fold:end:coq.build\\r'
 
 - echo 'Running tests...' && echo -en 'travis_fold:start:coq.test\\r'
-- ${TW} make -j ${NJOBS} ${TEST_TARGET}
+#- ${TW} make -j ${NJOBS} ${TEST_TARGET}
 - echo -en 'travis_fold:end:coq.test\\r'
+- test "$TEST_TARGET" != ci-geocoq
 - set +e
 
 # Testing Gitter webhook
