@@ -32,7 +32,6 @@ env:
   - COMPILER="system"
   - CAMLP5_VER="6.14"
   - PREFIX="-local"
-  - CACHE_NAME=default
   # Not ready yet for 8.7
   # - TEST_TARGET="ci-cpdt"
   # - TEST_TARGET="ci-metacoq"
@@ -41,47 +40,49 @@ env:
 matrix:
 
   allow_failures:
-  - env: TEST_TARGET="ci-geocoq"
+  - script: ./.travis.sh "ci-geocoq"
 
   include:
-    - env: TEST_TARGET="install" PREFIX="-prefix cache"
+    - script: ./.travis.sh "install"
       stage: build
-    - env: TEST_TARGET="validate"
+    - script: ./.travis.sh "validate"
       cache: false
       stage: test
-    - env: TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
+    - script: ./.travis.sh "test-suite"
+      env: COMPILER="4.02.3+32bit"
       cache: false
       stage: test
-    - env: TEST_TARGET="validate"   COMPILER="4.02.3+32bit"
+    - script: ./.travis.sh "validate"
+      env: COMPILER="4.02.3+32bit"
       cache: false
       stage: test
-    - env: TEST_TARGET="ci-bedrock-src"
+    - script: ./.travis.sh "ci-bedrock-src"
       stage: test
-    - env: TEST_TARGET="ci-coquelicot"
+    - script: ./.travis.sh "ci-coquelicot"
       stage: test
-    - env: TEST_TARGET="ci-geocoq"
+    - script: ./.travis.sh "ci-geocoq"
       stage: test
-    - env: TEST_TARGET="ci-fiat-crypto"
+    - script: ./.travis.sh "ci-fiat-crypto"
       stage: test
-    # - env: TEST_TARGET="ci-fiat-parsers"
+    # - script: ./.travis.sh "ci-fiat-parsers"
     #   stage: test
-    # - env: TEST_TARGET="ci-flocq"
+    # - script: ./.travis.sh "ci-flocq"
     #   stage: test
-    # - env: TEST_TARGET="ci-formal-topology"
+    # - script: ./.travis.sh "ci-formal-topology"
     #   stage: test
-    # - env: TEST_TARGET="ci-hott"
+    # - script: ./.travis.sh "ci-hott"
     #   stage: test
-    # - env: TEST_TARGET="ci-iris-coq"
+    # - script: ./.travis.sh "ci-iris-coq"
     #   stage: test
-    # - env: TEST_TARGET="ci-math-classes"
+    # - script: ./.travis.sh "ci-math-classes"
     #   stage: test
-    # - env: TEST_TARGET="ci-math-comp"
+    # - script: ./.travis.sh "ci-math-comp"
     #   stage: test
-    # - env: TEST_TARGET="ci-sf"
+    # - script: ./.travis.sh "ci-sf"
     #   stage: test
-    # - env: TEST_TARGET="ci-unimath"
+    # - script: ./.travis.sh "ci-unimath"
     #   stage: test
-    # - env: TEST_TARGET="ci-vst"
+    # - script: ./.travis.sh "ci-vst"
     #   stage: test
 
 
@@ -166,7 +167,7 @@ install:
 - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
 - opam list
 
-script: ./travis.sh
+#script: ./.travis.sh
 
 # Testing Gitter webhook
 # notifications:

@@ -4,6 +4,8 @@ TEST_TARGET="$1"
 
 if [ "$TEST_TARGET" = validate ]
 then TW="travis_wait"
+elif [ "$TEST_TARGET" = install ]
+then PREFIX="-prefix cache"
 fi
 
 set -ev
