@@ -2,9 +2,7 @@
 
 TEST_TARGET="$1"
 
-if [ "$TEST_TARGET" = validate ]
-then TW="travis_wait"
-elif [ "$TEST_TARGET" = install ]
+if [ "$TEST_TARGET" = install ]
 then PREFIX="-prefix cache"
 fi
 
@@ -20,7 +18,7 @@ if [ ! "(" -d cache ")" ]; then make -j ${NJOBS}; else find cache; fi
 echo -en 'travis_fold:end:coq.build\\r'
 
 echo 'Running tests...' && echo -en 'travis_fold:start:coq.test\\r'
-${TW} make -j ${NJOBS} ${TEST_TARGET}
+make -j ${NJOBS} ${TEST_TARGET}
 echo -en 'travis_fold:end:coq.test\\r'
 test "$TEST_TARGET" != ci-geocoq
 

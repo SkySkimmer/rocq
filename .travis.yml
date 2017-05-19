@@ -45,14 +45,14 @@ matrix:
   include:
     - script: ./.travis.sh "install"
       stage: build
-    - script: ./.travis.sh "validate"
+    - script: travis_wait ./.travis.sh "validate"
       cache: false
       stage: test
     - script: ./.travis.sh "test-suite"
       env: COMPILER="4.02.3+32bit"
       cache: false
       stage: test
-    - script: ./.travis.sh "validate"
+    - script: travis_wait ./.travis.sh "validate"
       env: COMPILER="4.02.3+32bit"
       cache: false
       stage: test
