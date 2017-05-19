@@ -3,22 +3,27 @@ dist: trusty
 # Travis builds are slower using sudo: false (the container-based
 # infrastructure) as of March 2017; see
 # https://github.com/coq/coq/pull/467 for some discussion.
-#sudo: required
+sudo: required
 # Until Ocaml becomes a language, we set a known one.
 language: c
 
 cache:
-#  apt: true
+  apt: true
   directories:
   - $HOME/.opam
-# addons:
-#   apt:
-#     sources:
-#     - avsm
-#     packages:
-#     - opam
-#     - aspcud
-#     - gcc-multilib
+
+before_cache:
+  - rm -rf $HOME/.opam/log/
+
+addons:
+  apt:
+    sources:
+    - avsm
+    packages:
+    - opam
+    - aspcud
+    - gcc-multilib
+
 env:
   global:
   - NJOBS=2
@@ -36,32 +41,50 @@ matrix:
   - env: TEST_TARGET="ci-geocoq"
 
   include:
-    - env: TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
     - env: TEST_TARGET="validate"                           TW="travis_wait"
+      stage: build
+    - env: TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
+      cache: false
+      stage: test
     - env: TEST_TARGET="validate"   COMPILER="4.02.3+32bit" TW="travis_wait"
+      cache: false
+      stage: test
     - env: TEST_TARGET="ci-bedrock-src"
-    - env: TEST_TARGET="ci-bedrock-facade"
-    - env: TEST_TARGET="ci-color"
-    - env: TEST_TARGET="ci-compcert"
+      stage: test
     - env: TEST_TARGET="ci-coquelicot"
+      stage: test
     - env: TEST_TARGET="ci-geocoq"
+      stage: test
     - env: TEST_TARGET="ci-fiat-crypto"
-    - env: TEST_TARGET="ci-fiat-parsers"
-    - env: TEST_TARGET="ci-flocq"
-    - env: TEST_TARGET="ci-formal-topology"
-    - env: TEST_TARGET="ci-hott"
-    - env: TEST_TARGET="ci-iris-coq"
-    - env: TEST_TARGET="ci-math-classes"
-    - env: TEST_TARGET="ci-math-comp"
-    - env: TEST_TARGET="ci-sf"
-    - env: TEST_TARGET="ci-unimath"
-    - env: TEST_TARGET="ci-vst"
+      stage: test
+    # - env: TEST_TARGET="ci-fiat-parsers"
+    #   stage: test
+    # - env: TEST_TARGET="ci-flocq"
+    #   stage: test
+    # - env: TEST_TARGET="ci-formal-topology"
+    #   stage: test
+    # - env: TEST_TARGET="ci-hott"
+    #   stage: test
+    # - env: TEST_TARGET="ci-iris-coq"
+    #   stage: test
+    # - env: TEST_TARGET="ci-math-classes"
+    #   stage: test
+    # - env: TEST_TARGET="ci-math-comp"
+    #   stage: test
+    # - env: TEST_TARGET="ci-sf"
+    #   stage: test
+    # - env: TEST_TARGET="ci-unimath"
+    #   stage: test
+    # - env: TEST_TARGET="ci-vst"
+    #   stage: test
 
 
-    - env:
-      - TEST_TARGET="test-suite"
-      - EXTRA_CONF="-coqide opt -with-doc yes"
-      - EXTRA_OPAM="lablgtk-extras hevea"
+    # - stage: test
+    #   cache: false
+    #   env:
+    #   - TEST_TARGET="test-suite"
+    #   - EXTRA_CONF="-coqide opt -with-doc yes"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
       # addons:
       #   apt:
       #     sources:
@@ -82,25 +105,28 @@ matrix:
       #     - transfig
       #     - imagemagick
 
-    - env:
-      - TEST_TARGET="test-suite"
-      - COMPILER="4.04.1"
-      - CAMLP5_VER="6.17"
-      - EXTRA_CONF="-coqide opt -with-doc yes"
-      - EXTRA_OPAM="lablgtk-extras hevea"
+    # - stage: test
+    #   cache: false
+    #   env:
+    #   - TEST_TARGET="test-suite"
+    #   - COMPILER="4.04.1"
+    #   - CAMLP5_VER="6.17"
+    #   - EXTRA_CONF="-coqide opt -with-doc yes"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
       # addons:
       #   apt:
       #     sources:
       #     - avsm
       #     packages: *extra-packages
 
-    # Ocaml warnings with two compilers
-    - env:
-      - TEST_TARGET="coqocaml"
-      - EXTRA_CONF="-coqide opt -warn-error"
-      - EXTRA_OPAM="lablgtk-extras hevea"
-      # dummy target
-      - BUILD_TARGET="clean"
+    # - stage: test
+    #   cache: false
+    #   env:
+    #   - TEST_TARGET="coqocaml"
+    #   - EXTRA_CONF="-coqide opt -warn-error"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
+    #   # dummy target
+    #   - BUILD_TARGET="clean"
       # addons:
       #   apt:
       #     sources:
@@ -111,40 +137,42 @@ matrix:
       #     - libgtk2.0-dev
       #     - libgtksourceview2.0-dev
 
-    - env:
-      - TEST_TARGET="coqocaml"
-      - COMPILER="4.04.1"
-      - CAMLP5_VER="6.17"
-      - EXTRA_CONF="-coqide opt -warn-error"
-      - EXTRA_OPAM="lablgtk-extras hevea"
-      # dummy target
-      - BUILD_TARGET="clean"
+    # - stage: test
+    #   cache: false
+    #   env:
+    #   - TEST_TARGET="coqocaml"
+    #   - COMPILER="4.04.1"
+    #   - CAMLP5_VER="6.17"
+    #   - EXTRA_CONF="-coqide opt -warn-error"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
+    #   # dummy target
+    #   - BUILD_TARGET="clean"
       # addons:
       #   apt:
       #     sources:
       #     - avsm
       #     packages: *coqide-packages
 
-# install:
-# - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
-# - eval $(opam config env)
-# - opam config list
-# - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
-# - opam list
+install:
+- opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
+- eval $(opam config env)
+- opam config list
+- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
+- opam list
 
 script:
 
 - set -e
 - echo 'Configuring Coq...' && echo -en 'travis_fold:start:coq.config\\r'
-#- ./configure -local -usecamlp5 -native-compiler yes ${EXTRA_CONF}
+- ./configure -local -usecamlp5 -native-compiler yes ${EXTRA_CONF}
 - echo -en 'travis_fold:end:coq.config\\r'
 
 - echo 'Building Coq...' && echo -en 'travis_fold:start:coq.build\\r'
-#- make -j ${NJOBS}
+- make -j ${NJOBS}
 - echo -en 'travis_fold:end:coq.build\\r'
 
 - echo 'Running tests...' && echo -en 'travis_fold:start:coq.test\\r'
-#- ${TW} make -j ${NJOBS} ${TEST_TARGET}
+- ${TW} make -j ${NJOBS} ${TEST_TARGET}
 - echo -en 'travis_fold:end:coq.test\\r'
 - test "$TEST_TARGET" != ci-geocoq
 - set +e
