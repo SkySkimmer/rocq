@@ -11,7 +11,6 @@ cache:
   apt: true
   directories:
   - $HOME/.opam
-  - cache
 
 before_cache:
   - rm -rf $HOME/.opam/log/
@@ -24,6 +23,16 @@ addons:
     - opam
     - aspcud
     - gcc-multilib
+    - libtool
+    - libglib2.0-dev
+    - gobject-introspection
+    - libgmp3-dev
+    - nettle-dev
+    - asciidoc
+    - glib-networking
+    - openssl
+    - libcurl4-openssl-dev
+    - libssl-dev
 
 env:
   global:
@@ -32,6 +41,7 @@ env:
   - COMPILER="system"
   - CAMLP5_VER="6.14"
   - PREFIX="-local"
+  - USEMEGA="true"
   # Not ready yet for 8.7
   # - TEST_TARGET="ci-cpdt"
   # - TEST_TARGET="ci-metacoq"
@@ -39,128 +49,146 @@ env:
 
 matrix:
 
-  allow_failures:
-  - script: ./.travis.sh "ci-geocoq"
+  # allow_failures:
+  # - script: ./.travis.sh "ci-geocoq"
 
   include:
-    - script: ./.travis.sh "install"
+    - script: ./.travis.sh
+      env:
+      - TEST_TARGET="install"
       stage: build
-    - script: travis_wait ./.travis.sh "validate"
-      cache: false
-      stage: test
-    - script: ./.travis.sh "test-suite"
-      env: COMPILER="4.02.3+32bit"
-      cache: false
-      stage: test
-    - script: travis_wait ./.travis.sh "validate"
-      env: COMPILER="4.02.3+32bit"
-      cache: false
-      stage: test
-    - script: ./.travis.sh "ci-bedrock-src"
-      stage: test
-    - script: ./.travis.sh "ci-coquelicot"
-      stage: test
-    - script: ./.travis.sh "ci-geocoq"
-      stage: test
-    - script: ./.travis.sh "ci-fiat-crypto"
-      stage: test
-    - script: ./.travis.sh "ci-fiat-parsers"
-      stage: test
-    - script: ./.travis.sh "ci-flocq"
-      stage: test
-    - script: ./.travis.sh "ci-formal-topology"
-      stage: test
-    - script: ./.travis.sh "ci-hott"
-      stage: test
-    - script: ./.travis.sh "ci-iris-coq"
-      stage: test
-    - script: ./.travis.sh "ci-math-classes"
-      stage: test
-    - script: ./.travis.sh "ci-math-comp"
-      stage: test
-    - script: ./.travis.sh "ci-sf"
-      stage: test
-    - script: ./.travis.sh "ci-unimath"
-      stage: test
-    - script: ./.travis.sh "ci-vst"
-      stage: test
-
-
-    - stage: test
-      cache: false
-      script: ./.travis.sh "test-suite"
+      after_script: ./.travis-put.sh
+    # - script: travis_wait ./.travis.sh "validate"
+    #   env:
+    #   - USEMEGA="false"
+    #   stage: test
+    # - script: ./.travis.sh "test-suite"
+    #   env: COMPILER="4.02.3+32bit"
+    #   env:
+    #   - USEMEGA="false"
+    #   stage: test
+    # - script: travis_wait ./.travis.sh "validate"
+    #   env: COMPILER="4.02.3+32bit"
+    #   env:
+    #   - USEMEGA="false"
+    #   stage: test
+    # - script: ./.travis.sh "ci-bedrock-src"
+    #   stage: test
+    # - script: ./.travis.sh "ci-coquelicot"
+    #   stage: test
+    # - script: ./.travis.sh "ci-geocoq"
+    #   stage: test
+    # - script: ./.travis.sh "ci-fiat-crypto"
+    #   stage: test
+    # - script: ./.travis.sh "ci-fiat-parsers"
+    #   stage: test
+    # - script: ./.travis.sh "ci-flocq"
+    #   stage: test
+    # - script: ./.travis.sh "ci-formal-topology"
+    #   stage: test
+    # - script: ./.travis.sh "ci-hott"
+    #   stage: test
+    # - script: ./.travis.sh "ci-iris-coq"
+    #   stage: test
+    # - script: ./.travis.sh "ci-math-classes"
+    #   stage: test
+    # - script: ./.travis.sh "ci-math-comp"
+    #   stage: test
+    - script: ./.travis.sh
       env:
-      - EXTRA_CONF="-coqide opt -with-doc yes"
-      - EXTRA_OPAM="lablgtk-extras hevea"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: &extra-packages
-          - opam
-          - aspcud
-          - libgtk2.0-dev
-          - libgtksourceview2.0-dev
-          - texlive-latex-base
-          - texlive-latex-recommended
-          - texlive-latex-extra
-          - texlive-math-extra
-          - texlive-fonts-recommended
-          - texlive-fonts-extra
-          - latex-xcolor
-          - ghostscript
-          - transfig
-          - imagemagick
+      - TEST_TARGET="ci-sf"
+      stage: test
+    # - script: ./.travis.sh "ci-unimath"
+    #   stage: test
+    # - script: ./.travis.sh "ci-vst"
+    #   stage: test
 
-    - stage: test
-      cache: false
-      script: ./.travis.sh "test-suite"
-      env:
-      - COMPILER="4.04.1"
-      - CAMLP5_VER="6.17"
-      - EXTRA_CONF="-coqide opt -with-doc yes"
-      - EXTRA_OPAM="lablgtk-extras hevea"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: *extra-packages
 
-    - stage: test
-      cache: false
-      script: ./.travis.sh "coqocaml"
-      env:
-      - EXTRA_CONF="-coqide opt -warn-error"
-      - EXTRA_OPAM="lablgtk-extras hevea"
-      # dummy target
-      - BUILD_TARGET="clean"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: &coqide-packages
-          - opam
-          - aspcud
-          - libgtk2.0-dev
-          - libgtksourceview2.0-dev
+    # - stage: test
+    #   script: ./.travis.sh "test-suite"
+    #   env:
+    #   - USEMEGA="false"
+    #   - EXTRA_CONF="-coqide opt -with-doc yes"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
+    #   addons:
+    #     apt:
+    #       sources:
+    #       - avsm
+    #       packages: &extra-packages
+    #       - opam
+    #       - aspcud
+    #       - libgtk2.0-dev
+    #       - libgtksourceview2.0-dev
+    #       - texlive-latex-base
+    #       - texlive-latex-recommended
+    #       - texlive-latex-extra
+    #       - texlive-math-extra
+    #       - texlive-fonts-recommended
+    #       - texlive-fonts-extra
+    #       - latex-xcolor
+    #       - ghostscript
+    #       - transfig
+    #       - imagemagick
 
-    - stage: test
-      cache: false
-      script: ./.travis.sh "coqocaml"
-      env:
-      - COMPILER="4.04.1"
-      - CAMLP5_VER="6.17"
-      - EXTRA_CONF="-coqide opt -warn-error"
-      - EXTRA_OPAM="lablgtk-extras hevea"
-      # dummy target
-      - BUILD_TARGET="clean"
-      addons:
-        apt:
-          sources:
-          - avsm
-          packages: *coqide-packages
+    # - stage: test
+    #   script: ./.travis.sh "test-suite"
+    #   env:
+    #   - USEMEGA="false"
+    #   - COMPILER="4.04.1"
+    #   - CAMLP5_VER="6.17"
+    #   - EXTRA_CONF="-coqide opt -with-doc yes"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
+    #   addons:
+    #     apt:
+    #       sources:
+    #       - avsm
+    #       packages: *extra-packages
+
+    # - stage: test
+    #   script: ./.travis.sh "coqocaml"
+    #   env:
+    #   - USEMEGA="false"
+    #   - EXTRA_CONF="-coqide opt -warn-error"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
+    #   # dummy target
+    #   - BUILD_TARGET="clean"
+    #   addons:
+    #     apt:
+    #       sources:
+    #       - avsm
+    #       packages: &coqide-packages
+    #       - opam
+    #       - aspcud
+    #       - libgtk2.0-dev
+    #       - libgtksourceview2.0-dev
+
+    # - stage: test
+    #   script: ./.travis.sh "coqocaml"
+    #   env:
+    #   - USEMEGA="false"
+    #   - COMPILER="4.04.1"
+    #   - CAMLP5_VER="6.17"
+    #   - EXTRA_CONF="-coqide opt -warn-error"
+    #   - EXTRA_OPAM="lablgtk-extras hevea"
+    #   # dummy target
+    #   - BUILD_TARGET="clean"
+    #   addons:
+    #     apt:
+    #       sources:
+    #       - avsm
+    #       packages: *coqide-packages
 
 install:
+# TODO cache this or something
+- wget http://megatools.megous.com/builds/megatools-1.9.97.tar.gz
+- zcat megatools-1.9.97.tar.gz > megatools-1.9.97.tar
+- tar -xf megatools-1.9.97.tar
+- pushd megatools-1.9.97
+- ./configure
+- make
+- sudo make install
+- popd
+
 - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
 - eval $(opam config env)
 - opam config list

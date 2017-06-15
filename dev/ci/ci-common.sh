@@ -6,7 +6,7 @@ set -xe
 export COQBIN=`pwd`/cache/bin/
 export PATH=`pwd`/cache/bin:$PATH
 
-ls `pwd`/bin
+ls "$COQBIN"
 
 # Where we clone and build external developments
 CI_BUILD_DIR=`pwd`/_build_ci
