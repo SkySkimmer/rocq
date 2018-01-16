@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ -z "$(tail -c 1 "$1")" ]
+if ! dev/tools/should-check-whitespace.sh "$1" || [ -z "$(tail -c 1 "$1")" ]
 then
     exit 0
 else

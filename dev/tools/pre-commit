@@ -5,14 +5,8 @@
 set -e
 
 CODE=0
-for f in $(git diff --cached --name-only)
-do
-    if [ -e "$f" ] && dev/tools/should-check-whitespace.sh "$f"
-    then
-        dev/tools/check-eof-newline.sh "$f" || CODE=1
-        dev/tools/fix-eof-newline.sh "$f"
-    fi
-done
+git diff --cached --name-only -z | xargs -0 -L 1 dev/tools/check-eof-newline.sh || CODE=1
+git diff --cached --name-only -z | xargs -0 -L 1 dev/tools/fix-eof-newline.sh
 
 if [ $CODE -ne 0 ]
 then
