@@ -52,7 +52,9 @@ before_script:
   - eval $(opam config env)
   - opam config list
   - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind num ${EXTRA_OPAM}
-  - rm -rf ~/.opam/log/
+  - rm -rf ~/.opam/log/*
+  - rm -rf ~/.opam/archives/*
+  - rm -rf ~/.opam/${COMPILER}/build/*
   - opam list
 
 # TODO figure out how to build doc for installed coq
@@ -89,6 +91,9 @@ before_script:
     EXTRA_CONF: "-native-compiler yes -coqide opt"
     EXTRA_PACKAGES: "$COQIDE_PACKAGES"
     EXTRA_OPAM: "$COQIDE_OPAM"
+    NJOBS: "4"
+  tags:
+    - fast-runner
 
 .warnings-template: &warnings-template
   # keep warnings in test stage so we can test things even when warnings occur
@@ -235,6 +240,8 @@ ci-color:
   variables:
     <<: *ci-template-vars
     EXTRA_PACKAGES: "$TIMING_PACKAGES"
+  tags:
+    - fast-runner
 
 ci-compcert:
   <<: *ci-template
@@ -261,14 +268,11 @@ ci-elpi:
 ci-equations:
   <<: *ci-template
 
-ci-geocoq:
+ci-fiat-crypto:
   <<: *ci-template
-  allow_failure: true
-
-# ci-fiat-crypto:
-#   <<: *ci-template
-#   # out of memory error
-#   allow_failure: true
+  # Runs out of memory on Gitlab shared runners.
+  tags:
+    - fast-runner
 
 ci-fiat-parsers:
   <<: *ci-template
@@ -284,6 +288,14 @@ ci-flocq:
 
 ci-formal-topology:
   <<: *ci-template
+  tags:
+    - fast-runner
+
+ci-geocoq:
+  <<: *ci-template
+  tags:
+    - fast-runner
+  # allow_failure: true
 
 ci-hott:
   <<: *ci-template
@@ -293,6 +305,8 @@ ci-hott:
 
 ci-iris-lambda-rust:
   <<: *ci-template
+  tags:
+    - fast-runner
 
 ci-ltac2:
   <<: *ci-template
@@ -302,6 +316,8 @@ ci-math-classes:
 
 ci-math-comp:
   <<: *ci-template
+  tags:
+    - fast-runner
 
 ci-sf:
   <<: *ci-template
@@ -314,3 +330,5 @@ ci-unimath:
 
 ci-vst:
   <<: *ci-template
+  tags:
+    - fast-runner
