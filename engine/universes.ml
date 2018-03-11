@@ -430,8 +430,6 @@ let constr_of_global gr =
 	      str " would forget universes.")
     else c
 
-let constr_of_reference = constr_of_global
-
 let constr_of_global_univ (gr,u) =
   match gr with
   | VarRef id -> mkVar id

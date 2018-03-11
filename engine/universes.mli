@@ -90,9 +90,6 @@ module Constraints : sig
   val pr : t -> Pp.t
 end
 
-type universe_constraints = Constraints.t
-[@@ocaml.deprecated "Use Constraints.t"]
-
 type 'a constraint_accumulator = Constraints.t -> 'a -> 'a option
 type 'a universe_constrained = 'a * Constraints.t
 type 'a universe_constraint_function = 'a -> 'a -> Constraints.t -> Constraints.t
@@ -207,10 +204,6 @@ val normalize_universe_subst : universe_subst ref ->
     See Evd.fresh_global, Evarutil.new_global, and pf_constr_of_global for
     the proper way to get a fresh copy of a global reference. *)
 val constr_of_global : Globnames.global_reference -> constr
-
-(** ** DEPRECATED ** synonym of [constr_of_global] *)
-val constr_of_reference : Globnames.global_reference -> constr
-[@@ocaml.deprecated "synonym of [constr_of_global]"]
 
 (** Returns the type of the global reference, by creating a fresh instance of polymorphic 
     references and computing their instantiated universe context. (side-effect on the
