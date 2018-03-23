@@ -964,9 +964,6 @@ let count_occurrences sigma m t =
   countrec m t;
   !n
 
-(* Synonymous *)
-let occur_term = dependent
-
 let pop t = EConstr.Vars.lift (-1) t
 
 (***************************)
