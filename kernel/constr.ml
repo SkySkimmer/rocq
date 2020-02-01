@@ -105,10 +105,55 @@ type ('constr, 'types, 'sort, 'univs) kind_of_term =
   | Proj      of Projection.t * 'constr
   | Int       of Uint63.t
   | Float     of Float64.t
-(* constr is the fixpoint of the previous type. Requires option
-   -rectypes of the Caml compiler to be set *)
-type t = (t, t, Sorts.t, Instance.t) kind_of_term
+
+module Self : sig
+  type t
+  val kind : t -> (t, t, Sorts.t, Instance.t) kind_of_term
+  val mk : (t, t, Sorts.t, Instance.t) kind_of_term -> t
+
+  (* for hashcons *)
+  val unsafe_mk : (t, t, Sorts.t, Instance.t) kind_of_term -> t
+  val rels : t array
+end = struct
+  (* constr is the fixpoint of the previous type. *)
+  type t = {kind:(t, t, Sorts.t, Instance.t) kind_of_term}
+  let kind x = x.kind
+
+  let unsafe_mk kind = {kind}
+
+  (* Constructs a de Bruijn index with number n *)
+  let rels =
+    Array.map unsafe_mk
+      [|Rel  1;Rel  2;Rel  3;Rel  4;Rel  5;Rel  6;Rel  7; Rel  8;
+        Rel  9;Rel 10;Rel 11;Rel 12;Rel 13;Rel 14;Rel 15; Rel 16|]
+
+  let sprop = unsafe_mk (Sort Sorts.sprop)
+  let prop = unsafe_mk (Sort Sorts.prop)
+  let set = unsafe_mk (Sort Sorts.set)
+
+  let[@inline] mk = function
+    | App (f,a) as k -> begin
+        if Int.equal (Array.length a) 0 then f else
+          match kind f with
+          | App (g, cl) -> unsafe_mk (App (g, Array.append cl a))
+          | _ -> unsafe_mk k
+      end
+    | Cast (c,ck,t) as k -> begin
+        match kind c with
+        | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == ck -> unsafe_mk (Cast (c,k1,t))
+        | _ -> unsafe_mk k
+      end
+    | Rel n when 1 <= n && n <= 16 -> rels.(n - 1)
+    | Sort Sorts.SProp -> sprop
+    | Sort Sorts.Prop -> prop
+    | Sort Sorts.Set -> set
+    | kind -> unsafe_mk kind
+end
+type t = Self.t
 type constr = t
+
+let kind = Self.kind
+let mk = Self.mk
 
 type existential = existential_key * constr array
 
@@ -122,74 +167,58 @@ type cofixpoint = (constr, types) pcofixpoint
 (* Term constructors *)
 (*********************)
 
-(* Constructs a de Bruijn index with number n *)
-let rels =
-  [|Rel  1;Rel  2;Rel  3;Rel  4;Rel  5;Rel  6;Rel  7; Rel  8;
-    Rel  9;Rel 10;Rel 11;Rel 12;Rel 13;Rel 14;Rel 15; Rel 16|]
-
-let mkRel n = if 0<n && n<=16 then rels.(n-1) else Rel n
+let mkRel n = mk (Rel n)
 
 (* Construct a type *)
-let mkSProp  = Sort Sorts.sprop
-let mkProp   = Sort Sorts.prop
-let mkSet    = Sort Sorts.set
-let mkType u = Sort (Sorts.sort_of_univ u)
-let mkSort   = function
-  | Sorts.SProp -> mkSProp
-  | Sorts.Prop -> mkProp (* Easy sharing *)
-  | Sorts.Set -> mkSet
-  | Sorts.Type _ as s -> Sort s
+let mkSProp  = mk (Sort Sorts.sprop)
+let mkProp   = mk (Sort Sorts.prop)
+let mkSet    = mk (Sort Sorts.set)
+let mkType u = mk (Sort (Sorts.sort_of_univ u))
+let mkSort s = mk (Sort s)
 
 (* Constructs the term t1::t2, i.e. the term t1 casted with the type t2 *)
 (* (that means t2 is declared as the type of t1) *)
-let mkCast (t1,k2,t2) =
-  match t1 with
-  | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == k2 -> Cast (c,k1,t2)
-  | _ -> Cast (t1,k2,t2)
+let mkCast (t1,k2,t2) = mk (Cast (t1,k2,t2))
 
 (* Constructs the product (x:t1)t2 *)
-let mkProd (x,t1,t2) = Prod (x,t1,t2)
+let mkProd (x,t1,t2) = mk (Prod (x,t1,t2))
 
 (* Constructs the abstraction [x:t1]t2 *)
-let mkLambda (x,t1,t2) = Lambda (x,t1,t2)
+let mkLambda (x,t1,t2) = mk (Lambda (x,t1,t2))
 
 (* Constructs [x=c_1:t]c_2 *)
-let mkLetIn (x,c1,t,c2) = LetIn (x,c1,t,c2)
+let mkLetIn (x,c1,t,c2) = mk (LetIn (x,c1,t,c2))
 
 (* If lt = [t1; ...; tn], constructs the application (t1 ... tn) *)
 (* We ensure applicative terms have at least one argument and the
    function is not itself an applicative term *)
-let mkApp (f, a) =
-  if Int.equal (Array.length a) 0 then f else
-    match f with
-      | App (g, cl) -> App (g, Array.append cl a)
-      | _ -> App (f, a)
+let mkApp (f, a) = mk (App (f,a))
 
 let map_puniverses f (x,u) = (f x, u)
 let in_punivs a = (a, Univ.Instance.empty)
 
 (* Constructs a constant *)
-let mkConst c = Const (in_punivs c)
-let mkConstU c = Const c
+let mkConst c = mk (Const (in_punivs c))
+let mkConstU c = mk (Const c)
 
 (* Constructs an applied projection *)
-let mkProj (p,c) = Proj (p,c)
+let mkProj (p,c) = mk (Proj (p,c))
 
 (* Constructs an existential variable *)
-let mkEvar e = Evar e
+let mkEvar e = mk (Evar e)
 
 (* Constructs the ith (co)inductive type of the block named kn *)
-let mkInd m = Ind (in_punivs m)
-let mkIndU m = Ind m
+let mkInd m = mk (Ind (in_punivs m))
+let mkIndU m = mk (Ind m)
 
 (* Constructs the jth constructor of the ith (co)inductive type of the
    block named kn. *)
-let mkConstruct c = Construct (in_punivs c)
-let mkConstructU c = Construct c
-let mkConstructUi ((ind,u),i) = Construct ((ind,i),u)
+let mkConstruct c = mk (Construct (in_punivs c))
+let mkConstructU c = mk (Construct c)
+let mkConstructUi ((ind,u),i) = mk (Construct ((ind,i),u))
 
 (* Constructs the term <p>Case c of c1 | c2 .. | cn end *)
-let mkCase (ci, p, c, ac) = Case (ci, p, c, ac)
+let mkCase (ci, p, c, ac) = mk (Case (ci, p, c, ac))
 
 (* If recindxs = [|i1,...in|]
       funnames = [|f1,...fn|]
@@ -209,7 +238,7 @@ let mkCase (ci, p, c, ac) = Case (ci, p, c, ac)
    where the length of the jth context is ij.
 *)
 
-let mkFix fix = Fix fix
+let mkFix fix = mk (Fix fix)
 
 (* If funnames = [|f1,...fn|]
       typarray = [|t1,...tn|]
@@ -225,13 +254,13 @@ let mkFix fix = Fix fix
     ...
     with       fn : tn := bn.
 *)
-let mkCoFix cofix= CoFix cofix
+let mkCoFix cofix= mk (CoFix cofix)
 
 (* Constructs an existential variable named "?n" *)
-let mkMeta  n =  Meta n
+let mkMeta  n =  mk (Meta n)
 
 (* Constructs a Variable named id *)
-let mkVar id = Var id
+let mkVar id = mk (Var id)
 
 let mkRef (gr,u) = let open GlobRef in match gr with
   | ConstRef c -> mkConstU (c,u)
@@ -240,10 +269,10 @@ let mkRef (gr,u) = let open GlobRef in match gr with
   | VarRef x -> mkVar x
 
 (* Constructs a primitive integer *)
-let mkInt i = Int i
+let mkInt i = mk (Int i)
 
 (* Constructs a primitive float number *)
-let mkFloat f = Float f
+let mkFloat f = mk (Float f)
 
 (************************************************************************)
 (*    kind_of_term = constructions as seen by the user                 *)
@@ -252,8 +281,6 @@ let mkFloat f = Float f
 (* User view of [constr]. For [App], it is ensured there is at
    least one argument and the function is not itself an applicative
    term *)
-
-let kind (c:t) = c
 
 let rec kind_nocast_gen kind c =
   match kind c with
@@ -267,10 +294,7 @@ let rec kind_nocast_gen kind c =
 let kind_nocast c = kind_nocast_gen kind c
 
 (* The other way around. We treat specifically smart constructors *)
-let of_kind = function
-| App (f, a) -> mkApp (f, a)
-| Cast (c, knd, t) -> mkCast (c, knd, t)
-| k -> k
+let of_kind = mk
 
 (**********************************************************************)
 (*          Non primitive term destructors                            *)
@@ -1026,12 +1050,8 @@ let constr_ord_int f t1 t2 =
   let fix_cmp (a1, i1) (a2, i2) =
     ((Array.compare Int.compare) =? Int.compare) a1 a2 i1 i2
   in
-  match kind t1, kind t2 with
-    | Cast (c1,_,_), _ -> f c1 t2
-    | _, Cast (c2,_,_) -> f t1 c2
-    (* Why this special case? *)
-    | App (Cast(c1,_,_),l1), _ -> f (mkApp (c1,l1)) t2
-    | _, App (Cast(c2, _,_),l2) -> f t1 (mkApp (c2,l2))
+  match kind_nocast t1, kind_nocast t2 with
+    | Cast _, _ | _, Cast _ -> assert false
     | Rel n1, Rel n2 -> Int.compare n1 n2
     | Rel _, _ -> -1 | _, Rel _ -> 1
     | Var id1, Var id2 -> Id.compare id1 id2
@@ -1129,7 +1149,7 @@ let array_eqeq t1 t2 =
    in aux 0)
 
 let hasheq t1 t2 =
-  match t1, t2 with
+  match kind t1, kind t2 with
     | Rel n1, Rel n2 -> n1 == n2
     | Meta m1, Meta m2 -> m1 == m2
     | Var id1, Var id2 -> id1 == id2
@@ -1194,53 +1214,54 @@ let sh_instance = Univ.Instance.share
    leaves. *)
 let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
   let rec hash_term t =
-    match t with
+    let u = Self.unsafe_mk in
+    match kind t with
       | Var i ->
-        (Var (sh_id i), combinesmall 1 (Id.hash i))
+        (u (Var (sh_id i)), combinesmall 1 (Id.hash i))
       | Sort s ->
-        (Sort (sh_sort s), combinesmall 2 (Sorts.hash s))
+        (u (Sort (sh_sort s)), combinesmall 2 (Sorts.hash s))
       | Cast (c, k, t) ->
         let c, hc = sh_rec c in
         let t, ht = sh_rec t in
-        (Cast (c, k, t), combinesmall 3 (combine3 hc (hash_cast_kind k) ht))
+        (u (Cast (c, k, t)), combinesmall 3 (combine3 hc (hash_cast_kind k) ht))
       | Prod (na,t,c) ->
         let t, ht = sh_rec t
         and c, hc = sh_rec c in
-        (Prod (sh_na na, t, c), combinesmall 4 (combine3 (hash_annot Name.hash na) ht hc))
+        (u (Prod (sh_na na, t, c)), combinesmall 4 (combine3 (hash_annot Name.hash na) ht hc))
       | Lambda (na,t,c) ->
         let t, ht = sh_rec t
         and c, hc = sh_rec c in
-        (Lambda (sh_na na, t, c), combinesmall 5 (combine3 (hash_annot Name.hash na) ht hc))
+        (u (Lambda (sh_na na, t, c)), combinesmall 5 (combine3 (hash_annot Name.hash na) ht hc))
       | LetIn (na,b,t,c) ->
         let b, hb = sh_rec b in
         let t, ht = sh_rec t in
         let c, hc = sh_rec c in
-        (LetIn (sh_na na, b, t, c), combinesmall 6 (combine4 (hash_annot Name.hash na) hb ht hc))
+        (u (LetIn (sh_na na, b, t, c)), combinesmall 6 (combine4 (hash_annot Name.hash na) hb ht hc))
       | App (c,l) ->
         let c, hc = sh_rec c in
         let l, hl = hash_term_array l in
-        (App (c,l), combinesmall 7 (combine hl hc))
+        (u (App (c,l)), combinesmall 7 (combine hl hc))
       | Evar (e,l) ->
         let l, hl = hash_term_array l in
-        (Evar (e,l), combinesmall 8 (combine (Evar.hash e) hl))
-      | Const (c,u) ->
+        (u (Evar (e,l)), combinesmall 8 (combine (Evar.hash e) hl))
+      | Const (c,us) ->
         let c' = sh_con c in
-        let u', hu = sh_instance u in
-        (Const (c', u'), combinesmall 9 (combine (Constant.SyntacticOrd.hash c) hu))
-      | Ind (ind,u) ->
-        let u', hu = sh_instance u in
-        (Ind (sh_ind ind, u'),
+        let us', hu = sh_instance us in
+        (u (Const (c', us')), combinesmall 9 (combine (Constant.SyntacticOrd.hash c) hu))
+      | Ind (ind,us) ->
+        let us', hu = sh_instance us in
+        (u (Ind (sh_ind ind, us')),
          combinesmall 10 (combine (ind_syntactic_hash ind) hu))
-      | Construct (c,u) ->
-        let u', hu = sh_instance u in
-        (Construct (sh_construct c, u'),
+      | Construct (c,us) ->
+        let us', hu = sh_instance us in
+        (u (Construct (sh_construct c, us')),
          combinesmall 11 (combine (constructor_syntactic_hash c) hu))
       | Case (ci,p,c,bl) ->
         let p, hp = sh_rec p
         and c, hc = sh_rec c in
         let bl,hbl = hash_term_array bl in
         let hbl = combine (combine hc hp) hbl in
-        (Case (sh_ci ci, p, c, bl), combinesmall 12 hbl)
+        (u (Case (sh_ci ci, p, c, bl)), combinesmall 12 hbl)
       | Fix (ln,(lna,tl,bl)) ->
         let bl,hbl = hash_term_array bl in
         let tl,htl = hash_term_array tl in
@@ -1248,7 +1269,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
         let fold accu na = combine (hash_annot Name.hash na) accu in
         let hna = Array.fold_left fold 0 lna in
         let h = combine3 hna hbl htl in
-        (Fix (ln,(lna,tl,bl)), combinesmall 13 h)
+        (u (Fix (ln,(lna,tl,bl))), combinesmall 13 h)
       | CoFix(ln,(lna,tl,bl)) ->
         let bl,hbl = hash_term_array bl in
         let tl,htl = hash_term_array tl in
@@ -1256,7 +1277,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
         let fold accu na = combine (hash_annot Name.hash na) accu in
         let hna = Array.fold_left fold 0 lna in
         let h = combine3 hna hbl htl in
-        (CoFix (ln,(lna,tl,bl)), combinesmall 14 h)
+        (u (CoFix (ln,(lna,tl,bl))), combinesmall 14 h)
       | Meta n ->
         (t, combinesmall 15 n)
       | Rel n ->
@@ -1264,7 +1285,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | Proj (p,c) ->
         let c, hc = sh_rec c in
         let p' = Projection.hcons p in
-          (Proj (p', c), combinesmall 17 (combine (Projection.SyntacticOrd.hash p') hc))
+        (u (Proj (p', c)), combinesmall 17 (combine (Projection.SyntacticOrd.hash p') hc))
       | Int i ->
         let (h,l) = Uint63.to_int2 i in
         (t, combinesmall 18 (combine h l))
@@ -1292,7 +1313,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
   in
   (* Make sure our statically allocated Rels (1 to 16) are considered
      as canonical, and hence hash-consed to themselves *)
-  ignore (hash_term_array rels);
+  ignore (hash_term_array Self.rels);
 
   fun t -> fst (sh_rec t)
 
@@ -1311,7 +1332,6 @@ let rec hash t =
     | Lambda (_, t, c) -> combinesmall 5 (combine (hash t) (hash c))
     | LetIn (_, b, t, c) ->
       combinesmall 6 (combine3 (hash b) (hash t) (hash c))
-    | App (Cast(c, _, _),l) -> hash (mkApp (c,l))
     | App (c,l) ->
       combinesmall 7 (combine (hash_term_array l) (hash c))
     | Evar (e,l) ->
