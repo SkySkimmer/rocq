@@ -16,7 +16,6 @@ open Nameops
 open Termops
 open Constr
 open Context
-open Namegen
 open Environ
 open Evd
 open EConstr
@@ -512,12 +511,8 @@ let meta_with_name evd id =
   match mvnodef, mvl with
     | _,[]  ->
       explain_no_such_bound_variable evd id
-    | ([n],_|_,[n]) ->
+    | (n::_,_|_,n::_) ->
         n
-    | _  ->
-        user_err ~hdr:"Evd.meta_with_name"
-          (str "Binder name \"" ++ Id.print id ++
-           strbrk "\" occurs more than once in clause.")
 
 let meta_of_binder clause loc mvs = function
   | NamedHyp s -> meta_with_name clause.evd s
@@ -726,10 +721,8 @@ let make_clenv_binding_gen hyps_only n env sigma (c,t) = function
       let clause = mk_clenv_from_env env sigma n (c,t) in
       clenv_constrain_dep_args hyps_only largs clause
   | ExplicitBindings lbind ->
-      let t = rename_bound_vars_as_displayed sigma Id.Set.empty [] t in
-      let clause = mk_clenv_from_env env sigma n
-        (c, t)
-      in clenv_match_args lbind clause
+      let clause = mk_clenv_from_env env sigma n (c, t) in
+      clenv_match_args lbind clause
   | NoBindings ->
       mk_clenv_from_env env sigma n (c,t)
 
@@ -767,8 +760,6 @@ let make_evar_clause env sigma ?len t =
   | None -> -1
   | Some n -> assert (0 <= n); n
   in
-  (* FIXME: do the renaming online *)
-  let t = rename_bound_vars_as_displayed sigma Id.Set.empty [] t in
   let rec clrec (sigma, holes) inst n t =
     if n = 0 then (sigma, holes, t)
     else match EConstr.kind sigma t with
@@ -823,11 +814,7 @@ let evar_with_name holes id =
   let hole = List.map_filter map holes in
   match hole with
   | [] -> explain_no_such_bound_variable holes id
-  | [h] -> h.hole_evar
-  | _ ->
-    user_err
-      (str "Binder name \"" ++ Id.print id ++
-        str "\" occurs more than once in clause.")
+  | h::_ -> h.hole_evar
 
 let evar_of_binder holes = function
 | NamedHyp s -> evar_with_name holes s
