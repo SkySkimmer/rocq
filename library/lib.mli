@@ -179,3 +179,5 @@ val replacement_context : unit -> Opaqueproof.work_list
 val discharge_proj_repr : Projection.Repr.t -> Projection.Repr.t
 val discharge_abstract_universe_context :
   Section.abstr_info -> Univ.AUContext.t -> Univ.universe_level_subst * Univ.AUContext.t
+
+val current_cmd : Loc.t option ref

@@ -558,3 +558,5 @@ let discharge_abstract_universe_context { Section.abstr_subst = subst; abstr_uct
   let subst = make_instance_subst subst in
   let auctx = Univ.subst_univs_level_abstract_universe_context subst auctx in
   subst, AUContext.union abs_ctx auctx
+
+let current_cmd = Summary.ref ~name:"current-cmd" None

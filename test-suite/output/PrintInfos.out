@@ -41,6 +41,7 @@ Nat.add is not universe polymorphic
 Arguments Nat.add (_ _)%nat_scope
 Nat.add is transparent
 Expands to: Constant Coq.Init.Nat.add
+Defined in File "stdin", line 47, characters 0-113:
 Nat.add : nat -> nat -> nat
 
 plus_n_O : forall n : nat, n = n + 0
@@ -49,6 +50,7 @@ plus_n_O is not universe polymorphic
 Arguments plus_n_O _%nat_scope
 plus_n_O is opaque
 Expands to: Constant Coq.Init.Peano.plus_n_O
+Defined in File "stdin", line 102, characters 0-4:
 Inductive le (n : nat) : nat -> Prop :=
     le_n : n <= n | le_S : forall m : nat, n <= m -> n <= S m.
 
@@ -69,6 +71,7 @@ bar : forall {x : nat}, x = 0
 
 Arguments bar {x}
 Expands to: Constant PrintInfos.bar
+Defined in File "stdin", line 23, characters 0-20:
 *** [ bar : foo ]
 
 Expanded type for implicit arguments

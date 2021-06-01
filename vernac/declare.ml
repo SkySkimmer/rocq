@@ -131,9 +131,14 @@ type 'a constant_entry =
   | ParameterEntry of Entries.parameter_entry
   | PrimitiveEntry of Entries.primitive_entry
 
+let constant_loc_map = Summary.ref ~name:"constant-loc-map" Cmap.empty
+
+let constant_loc con = Cmap.find_opt con !constant_loc_map
+
 type constant_obj = {
   cst_kind : Decls.logical_kind;
   cst_locl : Locality.import_status;
+  cst_from : Loc.t option;
 }
 
 let load_constant i ((sp,kn), obj) =
@@ -141,6 +146,7 @@ let load_constant i ((sp,kn), obj) =
     raise (DeclareUniv.AlreadyDeclared (None, Libnames.basename sp));
   let con = Global.constant_of_delta_kn kn in
   Nametab.push (Nametab.Until i) sp (GlobRef.ConstRef con);
+  Option.iter (fun loc -> constant_loc_map := Cmap.add con loc !constant_loc_map) obj.cst_from;
   Dumpglob.add_constant_kind con obj.cst_kind
 
 (* Opening means making the name without its module qualification available *)
@@ -162,14 +168,14 @@ let check_exists id =
 
 let cache_constant ((sp,kn), obj) =
   (* Invariant: the constant must exist in the logical environment *)
-  let kn' =
+  let con =
     if Global.exists_objlabel (Label.of_id (Libnames.basename sp))
     then Constant.make1 kn
     else CErrors.anomaly Pp.(str"Missing constant " ++ Id.print(Libnames.basename sp) ++ str".")
   in
-  assert (Environ.QConstant.equal (Global.env ()) kn' (Constant.make1 kn));
-  Nametab.push (Nametab.Until 1) sp (GlobRef.ConstRef (Constant.make1 kn));
-  Dumpglob.add_constant_kind (Constant.make1 kn) obj.cst_kind
+  Nametab.push (Nametab.Until 1) sp (GlobRef.ConstRef con);
+  Option.iter (fun loc -> constant_loc_map := Cmap.add con loc !constant_loc_map) obj.cst_from;
+  Dumpglob.add_constant_kind con obj.cst_kind
 
 let discharge_constant ((sp, kn), obj) =
   Some obj
@@ -196,6 +202,7 @@ let register_constant kn kind local =
   let o = inConstant {
     cst_kind = kind;
     cst_locl = local;
+    cst_from = !Lib.current_cmd;
   } in
   let id = Label.to_id (Constant.label kn) in
   let _ = Lib.add_leaf id o in

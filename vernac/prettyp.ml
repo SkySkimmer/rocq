@@ -371,6 +371,13 @@ let print_bidi_hints gr =
   | Some nargs ->
     [str "Using typing information from context after typing the " ++ int nargs ++ str " first arguments"]
 
+let print_source = function
+  | GlobRef.ConstRef c ->
+    (match Declare.constant_loc c with
+     | None -> []
+     | Some loc -> [hov 0 (str "Defined in " ++ Topfmt.pr_loc loc)])
+  | _ -> []
+
 (*********************)
 (* "Locate" commands *)
 
@@ -942,8 +949,9 @@ let print_about_any ?loc env sigma k udecl =
         print_name_infos ref @
         (if Pp.ismt rb then [] else [rb]) @
         print_opacity ref @
-  print_bidi_hints ref @
-  [hov 0 (str "Expands to: " ++ pr_located_qualid k)])
+        print_bidi_hints ref @
+        [hov 0 (str "Expands to: " ++ pr_located_qualid k)] @
+        print_source ref)
   | Syntactic kn ->
     let () = match Syntax_def.search_syntactic_definition kn with
     | [],Notation_term.NRef (ref,_) -> Dumpglob.add_glob ?loc ref

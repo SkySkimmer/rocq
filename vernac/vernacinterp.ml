@@ -259,6 +259,7 @@ let () = let open Goptions in
 (* Be careful with the cache here in case of an exception. *)
 let interp_gen ~verbosely ~st ~interp_fn cmd =
   Vernacstate.unfreeze_interp_state st;
+  Lib.current_cmd := cmd.CAst.loc;
   try vernac_timeout (fun st ->
       let v_mod = if verbosely then Flags.verbosely else Flags.silently in
       let ontop = v_mod (interp_fn ~st) cmd in
@@ -267,7 +268,9 @@ let interp_gen ~verbosely ~st ~interp_fn cmd =
     ) st
   with exn ->
     let exn = Exninfo.capture exn in
+    (* locate_if_not_already might go away eventually if we start using current_cmd *)
     let exn = locate_if_not_already ?loc:cmd.CAst.loc exn in
+    Lib.current_cmd := None;
     Vernacstate.invalidate_cache ();
     Exninfo.iraise exn
 

@@ -52,6 +52,7 @@ The reduction tactics unfold myplus when the 2nd and
   3rd arguments evaluate to a constructor
 myplus is transparent
 Expands to: Constant Arguments_renaming.Test1.myplus
+Defined in File "stdin", line 31, characters 0-108:
 @myplus
      : forall Z : Type, Z -> nat -> nat -> nat
 Inductive myEq (A B : Type) (x : A) : A -> Prop :=
@@ -87,6 +88,7 @@ The reduction tactics unfold myplus when the 2nd and
   3rd arguments evaluate to a constructor
 myplus is transparent
 Expands to: Constant Arguments_renaming.myplus
+Defined in File "stdin", line 31, characters 0-108:
 @myplus
      : forall Z : Type, Z -> nat -> nat -> nat
 The command has indeed failed with message:

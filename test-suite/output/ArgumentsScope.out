@@ -14,18 +14,21 @@ negb'' is not universe polymorphic
 Arguments negb'' _%bool_scope
 negb'' is transparent
 Expands to: Constant ArgumentsScope.A.B.negb''
+Defined in File "stdin", line 9, characters 0-26:
 negb' : bool -> bool
 
 negb' is not universe polymorphic
 Arguments negb' _%bool_scope
 negb' is transparent
 Expands to: Constant ArgumentsScope.A.negb'
+Defined in File "stdin", line 6, characters 0-25:
 negb : bool -> bool
 
 negb is not universe polymorphic
 Arguments negb _%bool_scope
 negb is transparent
 Expands to: Constant Coq.Init.Datatypes.negb
+Defined in File "stdin", line 69, characters 0-54:
 a : bool -> bool
 
 a is not universe polymorphic
@@ -39,16 +42,19 @@ negb : bool -> bool
 negb is not universe polymorphic
 negb is transparent
 Expands to: Constant Coq.Init.Datatypes.negb
+Defined in File "stdin", line 69, characters 0-54:
 negb' : bool -> bool
 
 negb' is not universe polymorphic
 negb' is transparent
 Expands to: Constant ArgumentsScope.A.negb'
+Defined in File "stdin", line 6, characters 0-25:
 negb'' : bool -> bool
 
 negb'' is not universe polymorphic
 negb'' is transparent
 Expands to: Constant ArgumentsScope.A.B.negb''
+Defined in File "stdin", line 9, characters 0-26:
 a : bool -> bool
 
 a is not universe polymorphic
@@ -58,13 +64,16 @@ negb : bool -> bool
 negb is not universe polymorphic
 negb is transparent
 Expands to: Constant Coq.Init.Datatypes.negb
+Defined in File "stdin", line 69, characters 0-54:
 negb' : bool -> bool
 
 negb' is not universe polymorphic
 negb' is transparent
 Expands to: Constant ArgumentsScope.negb'
+Defined in File "stdin", line 6, characters 0-25:
 negb'' : bool -> bool
 
 negb'' is not universe polymorphic
 negb'' is transparent
 Expands to: Constant ArgumentsScope.negb''
+Defined in File "stdin", line 9, characters 0-26:

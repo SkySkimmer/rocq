@@ -551,6 +551,8 @@ val check_program_libraries : unit -> unit
 
 end
 
+val constant_loc : Constant.t -> Loc.t option
+
 (** {6 For internal support, do not use}  *)
 
 module Internal : sig
