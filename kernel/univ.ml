@@ -684,19 +684,18 @@ let constraint_add_leq v u c =
   else
     match v, u with
     | (x,n), (y,m) ->
-    let j = m - n in
-      if j = -1 (* n = m+1, v+1 <= u <-> v < u *) then
+      let j = m - n in
+      if j <= -1 (* x+k <= y with k>0 *) then
+        (* This says eg u+2 <= v <-> u < v which sounds wrong yet
+           seems to work granted that v is not instantiated by an
+           algebraic *)
         Constraints.add (x,Lt,y) c
-      else if j <= -1 (* n = m+k, v+k <= u and k>0 *) then
-        if Level.equal x y then (* u+k <= u with k>0 *)
-          Constraints.add (x,Lt,x) c
-        else anomaly (Pp.str"Unable to handle arbitrary u+k <= v constraints.")
       else if j = 0 then
         Constraints.add (x,Le,y) c
       else (* j >= 1 *) (* m = n + k, u <= v+k *)
-        if Level.equal x y then c (* u <= u+k, trivial *)
-        else if Level.is_small x then c (* Prop,Set <= u+S k, trivial *)
-        else Constraints.add (x,Le,y) c (* u <= v implies u <= v+k *)
+      if Level.equal x y then c (* u <= u+k, trivial *)
+      else if Level.is_small x then c (* Prop,Set <= u+S k, trivial *)
+      else Constraints.add (x,Le,y) c (* u <= v implies u <= v+k *)
 
 let check_univ_leq_one u v = Universe.exists (Universe.Expr.leq u) v
 
