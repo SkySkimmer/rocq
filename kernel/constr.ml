@@ -116,9 +116,30 @@ type ('constr, 'types, 'sort, 'univs) kind_of_term =
   | Array     of 'univs * 'constr array * 'constr * 'types
 
 (* constr is the fixpoint of the previous type. *)
-type t = T of (t, t, Sorts.t, Instance.t) kind_of_term [@@unboxed]
-type constr = t
-type types = constr
+type t =
+  | TRel       of int
+  | TVar       of Id.t
+  | TMeta      of metavariable
+  | TEvar      of constr pexistential
+  | TSort      of Sorts.t
+  | TCast      of constr * cast_kind * types
+  | TProd      of Name.t binder_annot * types * types
+  | TLambda    of Name.t binder_annot * types * constr
+  | TLetIn     of Name.t binder_annot * constr * types * constr
+  | TApp       of constr * constr array
+  | TConst     of (Constant.t * Instance.t)
+  | TInd       of (inductive * Instance.t)
+  | TConstruct of (constructor * Instance.t)
+  | TCase      of case_info * Instance.t * constr array * types pcase_return * constr pcase_invert * constr * constr pcase_branch array
+  | TFix       of (constr, types) pfixpoint
+  | TCoFix     of (constr, types) pcofixpoint
+  | TProj      of Projection.t * constr
+  | TInt       of Uint63.t
+  | TFloat     of Float64.t
+  | TArray     of Instance.t * constr array * constr * types
+
+and constr = t
+and types = constr
 
 type existential = existential_key * constr list
 
@@ -138,7 +159,7 @@ type cofixpoint = (constr, types) pcofixpoint
    least one argument and the function is not itself an applicative
    term *)
 
-let kind (T c) = c
+let kind (x:t) : (t, t, Sorts.t, Instance.t) kind_of_term = Obj.magic x
 
 let rec kind_nocast_gen kind c =
   match kind c with
@@ -156,12 +177,9 @@ let kind_nocast c = kind_nocast_gen kind c
 (*********************)
 
 (* Constructs a de Bruijn index with number n *)
-let rels =
-  Array.map (fun c -> T c)
-    [|Rel  1;Rel  2;Rel  3;Rel  4;Rel  5;Rel  6;Rel  7; Rel  8;
-      Rel  9;Rel 10;Rel 11;Rel 12;Rel 13;Rel 14;Rel 15; Rel 16|]
+let rels = Array.init 16 (fun i -> TRel (i+1))
 
-let mkRel n = if 0<n && n<=16 then rels.(n-1) else T (Rel n)
+let mkRel n = if 0<n && n<=16 then rels.(n-1) else TRel n
 
 (* If lt = [t1; ...; tn], constructs the application (t1 ... tn) *)
 (* We ensure applicative terms have at least one argument and the
@@ -169,21 +187,38 @@ let mkRel n = if 0<n && n<=16 then rels.(n-1) else T (Rel n)
 let mkApp (f, a) =
   if Int.equal (Array.length a) 0 then f else
     match kind f with
-      | App (g, cl) -> T (App (g, Array.append cl a))
-      | _ -> T (App (f, a))
+      | App (g, cl) -> TApp (g, Array.append cl a)
+      | _ -> TApp (f, a)
 
 (* Constructs the term t1::t2, i.e. the term t1 casted with the type t2 *)
 (* (that means t2 is declared as the type of t1) *)
 let mkCast (t1,k2,t2) =
   match kind t1 with
-  | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == k2 -> T (Cast (c,k1,t2))
-  | _ -> T (Cast (t1,k2,t2))
+  | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == k2 -> TCast (c,k1,t2)
+  | _ -> TCast (t1,k2,t2)
 
 (* The other way around. We treat specifically smart constructors *)
 let of_kind = function
 | App (f, a) -> mkApp (f, a)
 | Cast (c, knd, t) -> mkCast (c, knd, t)
-| k -> T k
+| Rel i -> mkRel i
+| Var x -> TVar x
+| Meta n -> TMeta n
+| Evar e -> TEvar e
+| Sort s -> TSort s
+| Prod (na,a,b) -> TProd (na,a,b)
+| Lambda (na,t,b) -> TLambda (na,t,b)
+| LetIn (na,t,v,b) -> TLetIn (na,t,v,b)
+| Const c -> TConst c
+| Ind i -> TInd i
+| Construct c -> TConstruct c
+| Case (ci, u, pars, ret, iv, c, brs) -> TCase (ci,u,pars,ret,iv,c,brs)
+| Fix f -> TFix f
+| CoFix f -> TCoFix f
+| Proj (p, c) -> TProj (p,c)
+| Int i -> TInt i
+| Float f -> TFloat f
+| Array (u, a, def, t) -> TArray (u,a,def,t)
 
 (* Construct a type *)
 let mkSProp  = of_kind @@ Sort Sorts.sprop
@@ -1427,7 +1462,7 @@ and sh_rec t =
   let (y, h) = hash_term t in
   (* [h] must be positive. *)
   let h = h land 0x3FFFFFFF in
-  (HashsetTerm.repr h (T y) term_table, h)
+  (HashsetTerm.repr h (of_kind y) term_table, h)
 
 (* Note : During hash-cons of arrays, we modify them *in place* *)
 
