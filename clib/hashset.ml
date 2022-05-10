@@ -34,6 +34,7 @@ module type S = sig
   val create : int -> t
   val clear : t -> unit
   val repr : int -> elt -> t -> elt
+  val weak_repr : int -> elt -> t -> elt option
   val stats : t -> statistics
 end
 
@@ -180,7 +181,7 @@ module Make (E : EqType) =
 
   external unsafe_weak_get : 'a Weak.t -> int -> 'a option = "caml_weak_get"
 
-  let repr h d t =
+  let weak_repr h d t =
     let table = t.table in
     let index = get_index table h in
     let bucket = Array.unsafe_get table index in
@@ -196,9 +197,14 @@ module Make (E : EqType) =
         | _ -> incr pos
       end else incr pos
     done;
-    match !ans with
+    !ans
+
+  let repr h d t =
+    match weak_repr h d t with
     | Some v -> v
     | None ->
+      let table = t.table in
+      let index = get_index table h in
       let () = add_aux t Weak.set (Some d) h index in
       d
 

@@ -48,6 +48,9 @@ module type S = sig
       [constr] is stored in [set] and will be used as the canonical
       representation of this value in the future. *)
 
+  val weak_repr : int -> elt -> t -> elt option
+  (** Like [repr] but returns [None] instead of adding when not already present. *)
+
   val stats : t -> statistics
   (** Recover statistics on the table. *)
 end

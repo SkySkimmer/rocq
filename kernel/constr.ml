@@ -115,28 +115,30 @@ type ('constr, 'types, 'sort, 'univs) kind_of_term =
   | Float     of Float64.t
   | Array     of 'univs * 'constr array * 'constr * 'types
 
+type hash = int
+
 (* constr is the fixpoint of the previous type. *)
 type t =
   | TRel       of int
-  | TVar       of Id.t
+  | TVar       of Id.t * hash
   | TMeta      of metavariable
-  | TEvar      of constr pexistential
-  | TSort      of Sorts.t
-  | TCast      of constr * cast_kind * types
-  | TProd      of Name.t binder_annot * types * types
-  | TLambda    of Name.t binder_annot * types * constr
-  | TLetIn     of Name.t binder_annot * constr * types * constr
-  | TApp       of constr * constr array
-  | TConst     of (Constant.t * Instance.t)
-  | TInd       of (inductive * Instance.t)
-  | TConstruct of (constructor * Instance.t)
-  | TCase      of case_info * Instance.t * constr array * types pcase_return * constr pcase_invert * constr * constr pcase_branch array
-  | TFix       of (constr, types) pfixpoint
-  | TCoFix     of (constr, types) pcofixpoint
-  | TProj      of Projection.t * constr
+  | TEvar      of constr pexistential * hash
+  | TSort      of Sorts.t * hash
+  | TCast      of constr * cast_kind * types * hash
+  | TProd      of Name.t binder_annot * types * types * hash
+  | TLambda    of Name.t binder_annot * types * constr * hash
+  | TLetIn     of Name.t binder_annot * constr * types * constr * hash
+  | TApp       of constr * constr array * hash
+  | TConst     of (Constant.t * Instance.t) * hash
+  | TInd       of (inductive * Instance.t) * hash
+  | TConstruct of (constructor * Instance.t) * hash
+  | TCase      of case_info * Instance.t * constr array * types pcase_return * constr pcase_invert * constr * constr pcase_branch array * hash
+  | TFix       of (constr, types) pfixpoint * hash
+  | TCoFix     of (constr, types) pcofixpoint * hash
+  | TProj      of Projection.t * constr * hash
   | TInt       of Uint63.t
   | TFloat     of Float64.t
-  | TArray     of Instance.t * constr array * constr * types
+  | TArray     of Instance.t * constr array * constr * types * hash
 
 and constr = t
 and types = constr
@@ -159,7 +161,24 @@ type cofixpoint = (constr, types) pcofixpoint
    least one argument and the function is not itself an applicative
    term *)
 
-let kind (x:t) : (t, t, Sorts.t, Instance.t) kind_of_term = Obj.magic x
+let kind (x:t) : (t, t, Sorts.t, Instance.t) kind_of_term = match x with
+    | TRel _ | TMeta _ | TInt _ | TFloat _ -> Obj.magic x
+    | TVar (x, _) -> Var x
+    | TEvar (e, _) -> Evar e
+    | TSort (s, _) -> Sort s
+    | TCast (a, b, c, _) -> Cast (a,b,c)
+    | TProd (a, b, c, _) -> Prod (a,b,c)
+    | TLambda (a, b, c, _) -> Lambda (a,b,c)
+    | TLetIn (a, b, c, d, _) -> LetIn (a,b,c,d)
+    | TApp (a, b, _) -> App (a,b)
+    | TConst (a, _) -> Const a
+    | TInd (a, _) -> Ind a
+    | TConstruct (a, _) -> Construct a
+    | TCase (a, b, c, d, e, f, g, _) -> Case (a,b,c,d,e,f,g)
+    | TFix (a, _) -> Fix a
+    | TCoFix (a, _) -> CoFix a
+    | TProj (a, b, _) -> Proj (a,b)
+    | TArray (a, b, c, d, _) -> Array (a,b,c,d)
 
 let rec kind_nocast_gen kind c =
   match kind c with
@@ -171,6 +190,42 @@ let rec kind_nocast_gen kind c =
   | k -> k
 
 let kind_nocast c = kind_nocast_gen kind c
+
+open Hashset.Combine
+
+let hash = function
+  | TVar (_, h) -> h
+  | TSort (_, h) -> h
+  | TCast (_, _, _, h) -> h
+  | TProd (_, _, _, h) -> h
+  | TLambda (_, _, _, h) -> h
+  | TLetIn (_, _, _, _, h) -> h
+  | TApp (_, _, h) -> h
+  | TEvar (_, h) -> h
+  | TConst (_, h) -> h
+  | TInd (_, h) -> h
+  | TConstruct (_, h) -> h
+  | TCase (_, _, _, _, _, _, _, h) -> h
+  | TFix (_, h) -> h
+  | TCoFix (_, h) -> h
+  | TMeta n -> combinesmall 15 n
+  | TRel n -> combinesmall 16 n
+  | TProj (_, _, h) -> h
+  | TInt i ->
+    let (h,l) = Uint63.to_int2 i in
+    combinesmall 18 (combine h l)
+  | TFloat f -> combinesmall 19 (Float64.hash f)
+  | TArray (_, _, _, _, h) -> h
+
+let hash_array t =
+  let accu = ref 0 in
+    for i = 0 to Array.length t - 1 do
+      let h = hash (Array.unsafe_get t i) in
+      accu := combine !accu h
+    done;
+    (* [h] must be positive. *)
+    let h = !accu land 0x3FFFFFFF in
+    h
 
 (*********************)
 (* Term constructors *)
@@ -186,39 +241,89 @@ let mkRel n = if 0<n && n<=16 then rels.(n-1) else TRel n
    function is not itself an applicative term *)
 let mkApp (f, a) =
   if Int.equal (Array.length a) 0 then f else
-    match kind f with
-      | App (g, cl) -> TApp (g, Array.append cl a)
-      | _ -> TApp (f, a)
+    let f, a = match kind f with
+      | App (g, cl) -> (g, Array.append cl a)
+      | _ -> (f, a)
+    in
+    let h = combinesmall 7 (combine (hash f) (hash_array a)) in
+    TApp (f, a, h)
+
+let hash_cast_kind = function
+| VMcast -> 0
+| NATIVEcast -> 1
+| DEFAULTcast -> 2
 
 (* Constructs the term t1::t2, i.e. the term t1 casted with the type t2 *)
 (* (that means t2 is declared as the type of t1) *)
 let mkCast (t1,k2,t2) =
-  match kind t1 with
-  | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == k2 -> TCast (c,k1,t2)
-  | _ -> TCast (t1,k2,t2)
+  let c, k, t = match kind t1 with
+    | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == k2 -> (c,k1,t2)
+    | _ -> (t1,k2,t2)
+  in
+  let h = combinesmall 3 (combine3 (hash c) (hash_cast_kind k) (hash t)) in
+  TCast (c,k,t,h)
+
+let hash_invert = function
+  | NoInvert -> 0
+  | CaseInvert {indices;} ->
+    combinesmall 1 (hash_array indices)
 
 (* The other way around. We treat specifically smart constructors *)
 let of_kind = function
 | App (f, a) -> mkApp (f, a)
 | Cast (c, knd, t) -> mkCast (c, knd, t)
 | Rel i -> mkRel i
-| Var x -> TVar x
+| Var x -> TVar (x, combinesmall 1 (Id.hash x))
 | Meta n -> TMeta n
-| Evar e -> TEvar e
-| Sort s -> TSort s
-| Prod (na,a,b) -> TProd (na,a,b)
-| Lambda (na,t,b) -> TLambda (na,t,b)
-| LetIn (na,t,v,b) -> TLetIn (na,t,v,b)
-| Const c -> TConst c
-| Ind i -> TInd i
-| Construct c -> TConstruct c
-| Case (ci, u, pars, ret, iv, c, brs) -> TCase (ci,u,pars,ret,iv,c,brs)
-| Fix f -> TFix f
-| CoFix f -> TCoFix f
-| Proj (p, c) -> TProj (p,c)
+| Evar ((e,l) as ev) ->
+  let hl = List.fold_left (fun h c -> combine h (hash c)) 0 l in
+  TEvar (ev, combinesmall 8 (combine (Evar.hash e) hl))
+| Sort s -> TSort (s,combinesmall 2 (Sorts.hash s))
+| Prod (na,a,b) ->
+  TProd (na,a,b, combinesmall 4 (combine3 (hash_annot Name.hash na) (hash a) (hash b)))
+| Lambda (na,t,b) ->
+  TLambda (na,t,b, combinesmall 5 (combine3 (hash_annot Name.hash na) (hash t) (hash b)))
+| LetIn (na,t,v,b) ->
+  TLetIn (na,t,v,b, combinesmall 6 (combine4 (hash_annot Name.hash na) (hash t) (hash v) (hash b)))
+| Const c ->
+  TConst (c, combinesmall 9 (combine (Constant.SyntacticOrd.hash (fst c))
+                               (Instance.hash (snd c))))
+| Ind i ->
+  TInd (i, combinesmall 10 (combine (Ind.SyntacticOrd.hash (fst i))
+                              (Instance.hash (snd i))))
+| Construct c ->
+  TConstruct (c, combinesmall 11 (combine (Construct.SyntacticOrd.hash (fst c))
+                                    (Instance.hash (snd c))))
+| Case (ci, u, pms, ret, iv, c, brs) ->
+  let hash_ctx (lna, c) =
+    let fold accu na = combine (hash_annot Name.hash na) accu in
+    let hna = Array.fold_left fold 0 lna in
+    combine hna (hash c)
+  in
+  let hc = hash c in
+  let hiv = hash_invert iv in
+  let hpms = hash_array pms in
+  let hu = Instance.hash u in
+  let hp = hash_ctx ret in
+  let hbl = Array.fold_left (fun h c -> combine h (hash_ctx c)) 0 brs in
+  let h = combine (combine hc (combine hiv (combine hpms (combine hu hp)))) hbl in
+  TCase (ci,u,pms,ret,iv,c,brs, combinesmall 12 h)
+| Fix ((_,(lna,tl,bl)) as f) ->
+  let fold accu na = combine (hash_annot Name.hash na) accu in
+  let hna = Array.fold_left fold 0 lna in
+  let h = combine3 hna (hash_array bl) (hash_array tl) in
+  TFix (f, combinesmall 13 h)
+| CoFix ((_,(lna,tl,bl)) as f) ->
+  let fold accu na = combine (hash_annot Name.hash na) accu in
+  let hna = Array.fold_left fold 0 lna in
+  let h = combine3 hna (hash_array bl) (hash_array tl) in
+  TCoFix (f, combinesmall 14 h)
+| Proj (p, c) -> TProj (p,c, combinesmall 17 (combine (Projection.SyntacticOrd.hash p) (hash c)))
 | Int i -> TInt i
 | Float f -> TFloat f
-| Array (u, a, def, t) -> TArray (u,a,def,t)
+| Array (u, a, def, t) ->
+  let h = combine4 (Instance.hash u) (hash_array a) (hash def) (hash t) in
+  TArray (u,a,def,t, combinesmall 20 h)
 
 (* Construct a type *)
 let mkSProp  = of_kind @@ Sort Sorts.sprop
@@ -1233,10 +1338,192 @@ let term_array_table = HashsetTermArray.create 4999
 
 open Hashset.Combine
 
-let hash_cast_kind = function
-| VMcast -> 0
-| NATIVEcast -> 1
-| DEFAULTcast -> 2
+module CaseinfoHash =
+struct
+  type t = case_info
+  type u = inductive -> inductive
+  let hashcons hind ci = { ci with ci_ind = hind ci.ci_ind }
+  let pp_info_equal info1 info2 =
+    List.equal (==) info1.ind_tags info2.ind_tags &&
+    Array.equal (List.equal (==)) info1.cstr_tags info2.cstr_tags &&
+    info1.style == info2.style
+  let eq ci ci' =
+    ci.ci_ind == ci'.ci_ind &&
+    ci.ci_relevance == ci'.ci_relevance &&
+    Int.equal ci.ci_npar ci'.ci_npar &&
+    Array.equal Int.equal ci.ci_cstr_ndecls ci'.ci_cstr_ndecls && (* we use [Array.equal] on purpose *)
+    Array.equal Int.equal ci.ci_cstr_nargs ci'.ci_cstr_nargs && (* we use [Array.equal] on purpose *)
+    pp_info_equal ci.ci_pp_info ci'.ci_pp_info  (* we use (=) on purpose *)
+  open Hashset.Combine
+  let hash_bool b = if b then 0 else 1
+  let hash_bool_list = List.fold_left (fun n b -> combine n (hash_bool b))
+  let hash_pp_info info =
+    let h1 = match info.style with
+    | LetStyle -> 0
+    | IfStyle -> 1
+    | LetPatternStyle -> 2
+    | MatchStyle -> 3
+    | RegularStyle -> 4 in
+    let h2 = hash_bool_list 0 info.ind_tags in
+    let h3 = Array.fold_left hash_bool_list 0 info.cstr_tags in
+    combine3 h1 h2 h3
+  let hash ci =
+    let h1 = Ind.CanOrd.hash ci.ci_ind in
+    let h2 = Int.hash ci.ci_npar in
+    let h3 = Array.fold_left combine 0 ci.ci_cstr_ndecls in
+    let h4 = Array.fold_left combine 0 ci.ci_cstr_nargs in
+    let h5 = hash_pp_info ci.ci_pp_info in
+    combinesmall (Sorts.relevance_hash ci.ci_relevance) (combine5 h1 h2 h3 h4 h5)
+end
+
+module Hcaseinfo = Hashcons.Make(CaseinfoHash)
+
+let case_info_hash = CaseinfoHash.hash
+
+let hcons_caseinfo = Hashcons.simple_hcons Hcaseinfo.generate Hcaseinfo.hcons hcons_ind
+
+module Hannotinfo = struct
+    type t = Name.t binder_annot
+    type u = Name.t -> Name.t
+    let hash = hash_annot Name.hash
+    let eq = eq_annot (fun na1 na2 -> na1 == na2)
+    let hashcons h {binder_name=na;binder_relevance} =
+      {binder_name=h na;binder_relevance}
+  end
+module Hannot = Hashcons.Make(Hannotinfo)
+
+let hcons_annot = Hashcons.simple_hcons Hannot.generate Hannot.hcons Name.hcons
+
+let rec repr (t : t) =
+  match HashsetTerm.weak_repr (hash t) t term_table with
+  | Some t -> t
+  | None ->
+    let t = repr_subterms t in
+    (* NB may find a match since we have a different [t] *)
+    HashsetTerm.repr (hash t) t term_table
+
+(* be careful not to shadow t!! also test if being "smart" is even worth doing
+   or maybe we should hack our way into mutating everywhere *)
+and repr_subterms (t : t) =
+  match t with
+    | TRel _ | TMeta _ | TInt _ | TFloat _ -> t
+    | TVar (x, h) ->
+      let x' = Id.hcons x in
+      if x' == x then t else TVar (x',h)
+    | TEvar ((e,l), h) ->
+      let l' = repr_subterm_list l in
+      if l' == l then t else TEvar ((e,l'),h)
+    | TSort (s, h) ->
+      let s' = Sorts.hcons s in
+      if s' == s then t else TSort (s',h)
+    | TCast (c1, k, c2, h) ->
+      let c1' = repr c1 in
+      let c2' = repr c2 in
+      if c1' == c1 && c2' == c2 then t else TCast (c1',k,c2',h)
+    | TProd (na, c1, c2, h) ->
+      let na' = hcons_annot na in
+      let c1' = repr c1 in
+      let c2' = repr c2 in
+      if na' == na && c1' == c1 && c2' == c2 then t else TProd (na',c1',c2',h)
+    | TLambda (na, c1, c2, h) ->
+      let na' = hcons_annot na in
+      let c1' = repr c1 in
+      let c2' = repr c2 in
+      if na' == na && c1' == c1 && c2' == c2 then t else TLambda (na',c1',c2',h)
+    | TLetIn (na, c1, c2, c3, h) ->
+      let na' = hcons_annot na in
+      let c1' = repr c1 in
+      let c2' = repr c2 in
+      let c3' = repr c3 in
+      if na' == na && c1' == c1 && c2' == c2 && c3' == c3 then t else TLetIn (na',c1',c2',c3',h)
+    | TApp (c1, args, h) ->
+      let c1' = repr c1 in
+      let args' = repr_subterm_array args in
+      if c1' == c1 && args' == args then t else TApp (c1',args',h)
+    | TConst ((c,u), h) ->
+      let c' = hcons_con c in
+      let u' = Instance.hcons u in
+      if c' == c && u' == u then t else TConst ((c',u'),h)
+    | TInd ((i,u), h) ->
+      let i' = hcons_ind i in
+      let u' = Instance.hcons u in
+      if i' == i && u' == u then t else TInd ((i',u'),h)
+    | TConstruct ((c,u), h) ->
+      let c' = hcons_construct c in
+      let u' = Instance.hcons u in
+      if c' == c && u' == u then t else TConstruct ((c',u'),h)
+    | TCase (ci,u,pms,p,iv,c,bl,h) ->
+      (** FIXME: use a dedicated hashconsing structure *)
+      let repr_ctx (lna, c as orig) =
+        let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
+        let c' = repr c in
+        if c' == c then orig else (lna, c')
+      in
+
+      let ci' = hcons_caseinfo ci in
+      let u' = Instance.hcons u in
+      let pms' = repr_subterm_array pms in
+      let p' = repr_ctx p in
+      let iv' = repr_caseinvert_subterms iv in
+      let c' = repr c in
+      let () = Array.iteri (fun i b -> Array.unsafe_set bl i (repr_ctx b)) bl in
+
+      if ci' == ci && u' == u && pms' == pms && p' == p && iv' == iv && c' == c
+      then t else TCase (ci',u',pms',p',iv',c',bl,h)
+
+    (* TODO hcons the int array * int??? *)
+    | TFix ((ln,(lna,tl,bl)), h) ->
+      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
+      let tl' = repr_subterm_array tl in
+      let bl' = repr_subterm_array bl in
+      if tl' == tl && bl' == bl then t else TFix ((ln,(lna,tl',bl')),h)
+    | TCoFix ((ln,(lna,tl,bl)), h) ->
+      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
+      let tl' = repr_subterm_array tl in
+      let bl' = repr_subterm_array bl in
+      if tl' == tl && bl' == bl then t else TCoFix ((ln,(lna,tl',bl')),h)
+    | TProj (p, c, h) ->
+      let p' = Projection.hcons p in
+      let c' = repr c in
+      if p' == p && c' == c then t else TProj (p',c',h)
+    | TArray (u,a,def,ty,h) ->
+      let u' = Instance.hcons u in
+      let a' = repr_subterm_array a in
+      let def' = repr def in
+      let ty' = repr ty in
+      if u' == u && a' == a && def' == def && ty' == ty then t else TArray (u',a',def',ty',h)
+
+and repr_caseinvert_subterms = function
+  | NoInvert -> NoInvert
+  | CaseInvert {indices} as v ->
+    let indices' = repr_subterm_array indices in
+    if indices' == indices then v else CaseInvert {indices=indices'}
+
+and repr_subterm_list l = List.Smart.map repr l
+
+and repr_subterm_array l =
+  let h = ref 0 in
+  for i = 0 to Array.length l - 1 do
+    let c = repr (Array.unsafe_get l i) in
+    Array.unsafe_set l i c;
+    h := combine !h (hash c)
+  done;
+  HashsetTermArray.repr !h l term_array_table
+
+(* Make sure our statically allocated Rels (1 to 16) are considered
+   as canonical, and hence hash-consed to themselves *)
+let () = ignore (repr_subterm_array rels)
+
+let hcons = repr
+
+(* let hcons_types = hcons_constr *)
+
+type rel_declaration = (constr, types) Context.Rel.Declaration.pt
+type named_declaration = (constr, types) Context.Named.Declaration.pt
+type compacted_declaration = (constr, types) Context.Compacted.Declaration.pt
+type rel_context = rel_declaration list
+type named_context = named_declaration list
+type compacted_context = compacted_declaration list
 
 (* Exported hashing fonction on constr, used mainly in plugins.
    Slight differences from [snd (hash_term t)] above: it ignores binders
@@ -1296,209 +1583,6 @@ and hash_under_context (_, t) = hash t
 
 and hash_branches bl =
   Array.fold_left (fun acc t -> combine acc (hash_under_context t)) 0 bl
-
-module CaseinfoHash =
-struct
-  type t = case_info
-  type u = inductive -> inductive
-  let hashcons hind ci = { ci with ci_ind = hind ci.ci_ind }
-  let pp_info_equal info1 info2 =
-    List.equal (==) info1.ind_tags info2.ind_tags &&
-    Array.equal (List.equal (==)) info1.cstr_tags info2.cstr_tags &&
-    info1.style == info2.style
-  let eq ci ci' =
-    ci.ci_ind == ci'.ci_ind &&
-    ci.ci_relevance == ci'.ci_relevance &&
-    Int.equal ci.ci_npar ci'.ci_npar &&
-    Array.equal Int.equal ci.ci_cstr_ndecls ci'.ci_cstr_ndecls && (* we use [Array.equal] on purpose *)
-    Array.equal Int.equal ci.ci_cstr_nargs ci'.ci_cstr_nargs && (* we use [Array.equal] on purpose *)
-    pp_info_equal ci.ci_pp_info ci'.ci_pp_info  (* we use (=) on purpose *)
-  open Hashset.Combine
-  let hash_bool b = if b then 0 else 1
-  let hash_bool_list = List.fold_left (fun n b -> combine n (hash_bool b))
-  let hash_pp_info info =
-    let h1 = match info.style with
-    | LetStyle -> 0
-    | IfStyle -> 1
-    | LetPatternStyle -> 2
-    | MatchStyle -> 3
-    | RegularStyle -> 4 in
-    let h2 = hash_bool_list 0 info.ind_tags in
-    let h3 = Array.fold_left hash_bool_list 0 info.cstr_tags in
-    combine3 h1 h2 h3
-  let hash ci =
-    let h1 = Ind.CanOrd.hash ci.ci_ind in
-    let h2 = Int.hash ci.ci_npar in
-    let h3 = Array.fold_left combine 0 ci.ci_cstr_ndecls in
-    let h4 = Array.fold_left combine 0 ci.ci_cstr_nargs in
-    let h5 = hash_pp_info ci.ci_pp_info in
-    combinesmall (Sorts.relevance_hash ci.ci_relevance) (combine5 h1 h2 h3 h4 h5)
-end
-
-module Hcaseinfo = Hashcons.Make(CaseinfoHash)
-
-let case_info_hash = CaseinfoHash.hash
-
-let hcons_caseinfo = Hashcons.simple_hcons Hcaseinfo.generate Hcaseinfo.hcons hcons_ind
-
-module Hannotinfo = struct
-    type t = Name.t binder_annot
-    type u = Name.t -> Name.t
-    let hash = hash_annot Name.hash
-    let eq = eq_annot (fun na1 na2 -> na1 == na2)
-    let hashcons h {binder_name=na;binder_relevance} =
-      {binder_name=h na;binder_relevance}
-  end
-module Hannot = Hashcons.Make(Hannotinfo)
-
-let hcons_annot = Hashcons.simple_hcons Hannot.generate Hannot.hcons Name.hcons
-
-let rec hash_term (t : t) =
-  match kind t with
-  | Var i ->
-    (Var (Id.hcons i), combinesmall 1 (Id.hash i))
-  | Sort s ->
-    (Sort (Sorts.hcons s), combinesmall 2 (Sorts.hash s))
-  | Cast (c, k, t) ->
-    let c, hc = sh_rec c in
-    let t, ht = sh_rec t in
-    (Cast (c, k, t), combinesmall 3 (combine3 hc (hash_cast_kind k) ht))
-  | Prod (na,t,c) ->
-    let t, ht = sh_rec t
-    and c, hc = sh_rec c in
-    (Prod (hcons_annot na, t, c), combinesmall 4 (combine3 (hash_annot Name.hash na) ht hc))
-  | Lambda (na,t,c) ->
-    let t, ht = sh_rec t
-    and c, hc = sh_rec c in
-    (Lambda (hcons_annot na, t, c), combinesmall 5 (combine3 (hash_annot Name.hash na) ht hc))
-  | LetIn (na,b,t,c) ->
-    let b, hb = sh_rec b in
-    let t, ht = sh_rec t in
-    let c, hc = sh_rec c in
-    (LetIn (hcons_annot na, b, t, c), combinesmall 6 (combine4 (hash_annot Name.hash na) hb ht hc))
-  | App (c,l) ->
-    let c, hc = sh_rec c in
-    let l, hl = hash_term_array l in
-    (App (c,l), combinesmall 7 (combine hl hc))
-  | Evar (e,l) ->
-    let l, hl = hash_list_array l in
-    (Evar (e,l), combinesmall 8 (combine (Evar.hash e) hl))
-  | Const (c,u) ->
-    let c' = hcons_con c in
-    let u', hu = Instance.share u in
-    (Const (c', u'), combinesmall 9 (combine (Constant.SyntacticOrd.hash c) hu))
-  | Ind (ind,u) ->
-    let u', hu = Instance.share u in
-    (Ind (hcons_ind ind, u'),
-     combinesmall 10 (combine (Ind.SyntacticOrd.hash ind) hu))
-  | Construct (c,u) ->
-    let u', hu = Instance.share u in
-    (Construct (hcons_construct c, u'),
-     combinesmall 11 (combine (Construct.SyntacticOrd.hash c) hu))
-  | Case (ci,u,pms,p,iv,c,bl) ->
-    (** FIXME: use a dedicated hashconsing structure *)
-    let hcons_ctx (lna, c) =
-      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
-      let fold accu na = combine (hash_annot Name.hash na) accu in
-      let hna = Array.fold_left fold 0 lna in
-      let c, hc = sh_rec c in
-      (lna, c), combine hna hc
-    in
-    let u, hu = Instance.share u in
-    let pms,hpms = hash_term_array pms in
-    let p, hp = hcons_ctx p in
-    let iv, hiv = sh_invert iv in
-    let c, hc = sh_rec c in
-    let fold accu c =
-      let c, h = hcons_ctx c in
-      combine accu h, c
-    in
-    let hbl, bl = Array.fold_left_map fold 0 bl in
-    let hbl = combine (combine hc (combine hiv (combine hpms (combine hu hp)))) hbl in
-    (Case (hcons_caseinfo ci, u, pms, p, iv, c, bl), combinesmall 12 hbl)
-  | Fix (ln,(lna,tl,bl)) ->
-    let bl,hbl = hash_term_array bl in
-    let tl,htl = hash_term_array tl in
-    let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
-    let fold accu na = combine (hash_annot Name.hash na) accu in
-    let hna = Array.fold_left fold 0 lna in
-    let h = combine3 hna hbl htl in
-    (Fix (ln,(lna,tl,bl)), combinesmall 13 h)
-  | CoFix(ln,(lna,tl,bl)) ->
-    let bl,hbl = hash_term_array bl in
-    let tl,htl = hash_term_array tl in
-    let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
-    let fold accu na = combine (hash_annot Name.hash na) accu in
-    let hna = Array.fold_left fold 0 lna in
-    let h = combine3 hna hbl htl in
-    (CoFix (ln,(lna,tl,bl)), combinesmall 14 h)
-  | Meta n as t ->
-    (t, combinesmall 15 n)
-  | Rel n as t ->
-    (t, combinesmall 16 n)
-  | Proj (p,c) ->
-    let c, hc = sh_rec c in
-    let p' = Projection.hcons p in
-    (Proj (p', c), combinesmall 17 (combine (Projection.SyntacticOrd.hash p') hc))
-  | Int i as t ->
-    let (h,l) = Uint63.to_int2 i in
-    (t, combinesmall 18 (combine h l))
-  | Float f as t -> (t, combinesmall 19 (Float64.hash f))
-  | Array (u,t,def,ty) ->
-    let u, hu = Instance.share u in
-    let t, ht = hash_term_array t in
-    let def, hdef = sh_rec def in
-    let ty, hty = sh_rec ty in
-    let h = combine4 hu ht hdef hty in
-    (Array(u,t,def,ty), combinesmall 20 h)
-
-and sh_invert = function
-  | NoInvert -> NoInvert, 0
-  | CaseInvert {indices;} ->
-    let indices, ha = hash_term_array indices in
-    CaseInvert {indices;}, combinesmall 1 ha
-
-and sh_rec t =
-  let (y, h) = hash_term t in
-  (* [h] must be positive. *)
-  let h = h land 0x3FFFFFFF in
-  (HashsetTerm.repr h (of_kind y) term_table, h)
-
-(* Note : During hash-cons of arrays, we modify them *in place* *)
-
-and hash_term_array t =
-  let accu = ref 0 in
-  for i = 0 to Array.length t - 1 do
-    let x, h = sh_rec (Array.unsafe_get t i) in
-    accu := combine !accu h;
-    Array.unsafe_set t i x
-  done;
-  (* [h] must be positive. *)
-  let h = !accu land 0x3FFFFFFF in
-  (HashsetTermArray.repr h t term_array_table, h)
-
-and hash_list_array l =
-  let fold accu c =
-    let c, h = sh_rec c in
-    (combine accu h, c)
-  in
-  let h, l = List.fold_left_map fold 0 l in
-  (l, h land 0x3FFFFFFF)
-
-  (* Make sure our statically allocated Rels (1 to 16) are considered
-     as canonical, and hence hash-consed to themselves *)
-let () = ignore (hash_term_array rels)
-
-let hcons t = fst (sh_rec t)
-
-(* let hcons_types = hcons_constr *)
-
-type rel_declaration = (constr, types) Context.Rel.Declaration.pt
-type named_declaration = (constr, types) Context.Named.Declaration.pt
-type compacted_declaration = (constr, types) Context.Compacted.Declaration.pt
-type rel_context = rel_declaration list
-type named_context = named_declaration list
-type compacted_context = compacted_declaration list
 
 (** Minimalistic constr printer, typically for debugging *)
 
