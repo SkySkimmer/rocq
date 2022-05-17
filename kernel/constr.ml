@@ -1394,65 +1394,105 @@ module Hannot = Hashcons.Make(Hannotinfo)
 
 let hcons_annot = Hashcons.simple_hcons Hannot.generate Hannot.hcons Name.hcons
 
+
+type mut =
+  | MRel of int
+  | MVar of {mutable x:Id.t; h:hash}
+  | MMeta of metavariable
+  | MEvar of {mutable x:constr pexistential; h:hash}
+  | MSort of {mutable s:Sorts.t; h:hash}
+  | MCast of {mutable c1:constr; k:cast_kind; mutable c2:types; h:hash}
+  | MProd of {mutable na:Name.t binder_annot; mutable c1:types; mutable c2:types; h:hash}
+  | MLambda of {mutable na:Name.t binder_annot; mutable c1:types; mutable c2:constr; h:hash}
+  | MLetIn of {mutable na:Name.t binder_annot; mutable c1:constr; mutable c2:types; mutable c3:constr; h:hash}
+  | MApp of {mutable c:constr; mutable a:constr array; h:hash}
+  | MConst of {mutable c:(Constant.t * Instance.t); h:hash}
+  | MInd of {mutable c:(inductive * Instance.t); h:hash}
+  | MConstruct of {mutable c:(constructor * Instance.t); h:hash}
+  | MCase of {mutable ci:case_info; mutable u:Instance.t; mutable pms:constr array; mutable p:types pcase_return; mutable iv:constr pcase_invert; mutable c:constr; brs:constr pcase_branch array; h:hash}
+  | MFix of {mutable f:(constr, types) pfixpoint; h:hash}
+  | MCoFix of {mutable f:(constr, types) pcofixpoint; h:hash}
+  | MProj of {mutable p:Projection.t; mutable c:constr; h:hash}
+  | MInt of Uint63.t
+  | MFloat of Float64.t
+  | MArray of {mutable u:Instance.t; mutable a:constr array; mutable def:constr; mutable t:types; h:hash}
+[@@warning "-37"]
+
+
+let mutkind (x:constr) : mut = Obj.magic x
+
 let rec repr (t : t) =
   match HashsetTerm.weak_repr (hash t) t term_table with
   | Some t -> t
   | None ->
-    let t = repr_subterms t in
-    (* NB may find a match since we have a different [t] *)
+    let () = repr_subterms t in
+    (* NB may find a match since we have modified [t] *)
     HashsetTerm.repr (hash t) t term_table
 
 (* be careful not to shadow t!! also test if being "smart" is even worth doing
    or maybe we should hack our way into mutating everywhere *)
 and repr_subterms (t : t) =
-  match t with
-    | TRel _ | TMeta _ | TInt _ | TFloat _ -> t
-    | TVar (x, h) ->
-      let x' = Id.hcons x in
-      if x' == x then t else TVar (x',h)
-    | TEvar ((e,l), h) ->
+  match mutkind t with
+    | MRel _ | MMeta _ | MInt _ | MFloat _ -> ()
+    | MVar v ->
+      let x' = Id.hcons v.x in
+      if x' != v.x then v.x <- x'
+    | MEvar v ->
+      let l = snd v.x in
       let l' = repr_subterm_list l in
-      if l' == l then t else TEvar ((e,l'),h)
-    | TSort (s, h) ->
-      let s' = Sorts.hcons s in
-      if s' == s then t else TSort (s',h)
-    | TCast (c1, k, c2, h) ->
-      let c1' = repr c1 in
-      let c2' = repr c2 in
-      if c1' == c1 && c2' == c2 then t else TCast (c1',k,c2',h)
-    | TProd (na, c1, c2, h) ->
-      let na' = hcons_annot na in
-      let c1' = repr c1 in
-      let c2' = repr c2 in
-      if na' == na && c1' == c1 && c2' == c2 then t else TProd (na',c1',c2',h)
-    | TLambda (na, c1, c2, h) ->
-      let na' = hcons_annot na in
-      let c1' = repr c1 in
-      let c2' = repr c2 in
-      if na' == na && c1' == c1 && c2' == c2 then t else TLambda (na',c1',c2',h)
-    | TLetIn (na, c1, c2, c3, h) ->
-      let na' = hcons_annot na in
-      let c1' = repr c1 in
-      let c2' = repr c2 in
-      let c3' = repr c3 in
-      if na' == na && c1' == c1 && c2' == c2 && c3' == c3 then t else TLetIn (na',c1',c2',c3',h)
-    | TApp (c1, args, h) ->
-      let c1' = repr c1 in
-      let args' = repr_subterm_array args in
-      if c1' == c1 && args' == args then t else TApp (c1',args',h)
-    | TConst ((c,u), h) ->
+      if l' != l then v.x <- (fst v.x,l')
+    | MSort v ->
+      let s' = Sorts.hcons v.s in
+      if s' != v.s then v.s <- s'
+    | MCast v ->
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2'
+    | MProd v ->
+      let na' = hcons_annot v.na in
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      if na' != v.na then v.na <- na';
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2'
+    | MLambda v ->
+      let na' = hcons_annot v.na in
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      if na' != v.na then v.na <- na';
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2'
+    | MLetIn v ->
+      let na' = hcons_annot v.na in
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      let c3' = repr v.c3 in
+      if na' != v.na then v.na <- na';
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2';
+      if c3' != v.c3 then v.c3 <- c3'
+    | MApp v ->
+      let c' = repr v.c in
+      let a' = repr_subterm_array v.a in
+      if c' != v.c then v.c <- c';
+      if a' != v.a then v.a <- a'
+    | MConst v ->
+      let c, u = v.c in
       let c' = hcons_con c in
       let u' = Instance.hcons u in
-      if c' == c && u' == u then t else TConst ((c',u'),h)
-    | TInd ((i,u), h) ->
-      let i' = hcons_ind i in
+      if c' != c || u' != u then v.c <- (c',u')
+    | MInd v ->
+      let c, u = v.c in
+      let c' = hcons_ind c in
       let u' = Instance.hcons u in
-      if i' == i && u' == u then t else TInd ((i',u'),h)
-    | TConstruct ((c,u), h) ->
+      if c' != c || u' != u then v.c <- (c',u')
+    | MConstruct v ->
+      let c, u = v.c in
       let c' = hcons_construct c in
       let u' = Instance.hcons u in
-      if c' == c && u' == u then t else TConstruct ((c',u'),h)
-    | TCase (ci,u,pms,p,iv,c,bl,h) ->
+      if c' != c || u' != u then v.c <- (c',u')
+    | MCase v ->
       (** FIXME: use a dedicated hashconsing structure *)
       let repr_ctx (lna, c as orig) =
         let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
@@ -1460,38 +1500,48 @@ and repr_subterms (t : t) =
         if c' == c then orig else (lna, c')
       in
 
-      let ci' = hcons_caseinfo ci in
-      let u' = Instance.hcons u in
-      let pms' = repr_subterm_array pms in
-      let p' = repr_ctx p in
-      let iv' = repr_caseinvert_subterms iv in
-      let c' = repr c in
-      let () = Array.iteri (fun i b -> Array.unsafe_set bl i (repr_ctx b)) bl in
+      let ci' = hcons_caseinfo v.ci in
+      let u' = Instance.hcons v.u in
+      let pms' = repr_subterm_array v.pms in
+      let p' = repr_ctx v.p in
+      let iv' = repr_caseinvert_subterms v.iv in
+      let c' = repr v.c in
+      let () = Array.iteri (fun i b -> Array.unsafe_set v.brs i (repr_ctx b)) v.brs in
 
-      if ci' == ci && u' == u && pms' == pms && p' == p && iv' == iv && c' == c
-      then t else TCase (ci',u',pms',p',iv',c',bl,h)
+      if ci' != v.ci then v.ci <- ci';
+      if u' != v.u then v.u <- u';
+      if pms' != v.pms then v.pms <- pms';
+      if p' != v.p then v.p <- p';
+      if iv' != v.iv then v.iv <- iv';
+      if c' != v.c then v.c <- c'
 
     (* TODO hcons the int array * int??? *)
-    | TFix ((ln,(lna,tl,bl)), h) ->
+    | MFix v ->
+      let (ln,(lna,tl,bl)) = v.f in
       let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
       let tl' = repr_subterm_array tl in
       let bl' = repr_subterm_array bl in
-      if tl' == tl && bl' == bl then t else TFix ((ln,(lna,tl',bl')),h)
-    | TCoFix ((ln,(lna,tl,bl)), h) ->
+      if tl' != tl || bl' != bl then v.f <- (ln,(lna,tl',bl'))
+    | MCoFix v ->
+      let (ln,(lna,tl,bl)) = v.f in
       let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
       let tl' = repr_subterm_array tl in
       let bl' = repr_subterm_array bl in
-      if tl' == tl && bl' == bl then t else TCoFix ((ln,(lna,tl',bl')),h)
-    | TProj (p, c, h) ->
-      let p' = Projection.hcons p in
-      let c' = repr c in
-      if p' == p && c' == c then t else TProj (p',c',h)
-    | TArray (u,a,def,ty,h) ->
-      let u' = Instance.hcons u in
-      let a' = repr_subterm_array a in
-      let def' = repr def in
-      let ty' = repr ty in
-      if u' == u && a' == a && def' == def && ty' == ty then t else TArray (u',a',def',ty',h)
+      if tl' != tl || bl' != bl then v.f <- (ln,(lna,tl',bl'))
+    | MProj v ->
+      let p' = Projection.hcons v.p in
+      let c' = repr v.c in
+      if p' != v.p then v.p <- p';
+      if c' != v.c then v.c <- c'
+    | MArray v ->
+      let u' = Instance.hcons v.u in
+      let a' = repr_subterm_array v.a in
+      let def' = repr v.def in
+      let t' = repr v.t in
+      if u' != v.u then v.u <- u';
+      if a' != v.a then v.a <- a';
+      if def' != v.def then v.def <- def';
+      if t' != v.t then v.t <- t'
 
 and repr_caseinvert_subterms = function
   | NoInvert -> NoInvert
