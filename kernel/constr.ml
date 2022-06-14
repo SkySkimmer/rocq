@@ -226,6 +226,347 @@ let hash_array t =
     (* [h] must be positive. *)
     let h = !accu land 0x3FFFFFFF in
     h
+(*******************)
+(*  hash-consing   *)
+(*******************)
+
+(* Hash-consing of [constr] does not use the module [Hashcons] because
+   [Hashcons] is not efficient on deep tree-like data
+   structures. Indeed, [Hashcons] is based the (very efficient)
+   generic hash function [Hashtbl.hash], which computes the hash key
+   through a depth bounded traversal of the data structure to be
+   hashed. As a consequence, for a deep [constr] like the natural
+   number 1000 (S (S (... (S O)))), the same hash is assigned to all
+   the sub [constr]s greater than the maximal depth handled by
+   [Hashtbl.hash]. This entails a huge number of collisions in the
+   hash table and leads to cubic hash-consing in this worst-case.
+
+   In order to compute a hash key that is independent of the data
+   structure depth while being constant-time, an incremental hashing
+   function must be devised. A standard implementation creates a cache
+   of the hashing function by decorating each node of the hash-consed
+   data structure with its hash key. In that case, the hash function
+   can deduce the hash key of a toplevel data structure by a local
+   computation based on the cache held on its substructures.
+   Unfortunately, this simple implementation introduces a space
+   overhead that is damageable for the hash-consing of small [constr]s
+   (the most common case). One can think of an heterogeneous
+   distribution of caches on smartly chosen nodes, but this is forbidden
+   by the use of generic equality in Coq source code. (Indeed, this forces
+   each [constr] to have a unique canonical representation.)
+
+   Given that hash-consing proceeds inductively, we can nonetheless
+   computes the hash key incrementally during hash-consing by changing
+   a little the signature of the hash-consing function: it now returns
+   both the hash-consed term and its hash key. This simple solution is
+   implemented in the following code: it does not introduce a space
+   overhead in [constr], that's why the efficiency is unchanged for
+   small [constr]s. Besides, it does handle deep [constr]s without
+   introducing an unreasonable number of collisions in the hash table.
+   Some benchmarks make us think that this implementation of
+   hash-consing is linear in the size of the hash-consed data
+   structure for our daily use of Coq.
+*)
+
+let array_eqeq t1 t2 =
+  t1 == t2 ||
+  (Int.equal (Array.length t1) (Array.length t2) &&
+   let rec aux i =
+     (Int.equal i (Array.length t1)) || (t1.(i) == t2.(i) && aux (i + 1))
+   in aux 0)
+
+let invert_eqeq iv1 iv2 =
+  match iv1, iv2 with
+  | NoInvert, NoInvert -> true
+  | NoInvert, CaseInvert _ | CaseInvert _, NoInvert -> false
+  | CaseInvert {indices=i1}, CaseInvert {indices=i2} ->
+    i1 == i2
+
+let hasheq_ctx (nas1, c1) (nas2, c2) =
+  array_eqeq nas1 nas2 && c1 == c2
+
+let hasheq t1 t2 =
+  match kind t1, kind t2 with
+    | Rel n1, Rel n2 -> n1 == n2
+    | Meta m1, Meta m2 -> m1 == m2
+    | Var id1, Var id2 -> id1 == id2
+    | Sort s1, Sort s2 -> s1 == s2
+    | Cast (c1,k1,t1), Cast (c2,k2,t2) -> c1 == c2 && k1 == k2 && t1 == t2
+    | Prod (n1,t1,c1), Prod (n2,t2,c2) -> n1 == n2 && t1 == t2 && c1 == c2
+    | Lambda (n1,t1,c1), Lambda (n2,t2,c2) -> n1 == n2 && t1 == t2 && c1 == c2
+    | LetIn (n1,b1,t1,c1), LetIn (n2,b2,t2,c2) ->
+      n1 == n2 && b1 == b2 && t1 == t2 && c1 == c2
+    | App (c1,l1), App (c2,l2) -> c1 == c2 && array_eqeq l1 l2
+    | Proj (p1,c1), Proj(p2,c2) -> p1 == p2 && c1 == c2
+    | Evar (e1,l1), Evar (e2,l2) -> e1 == e2 && List.equal (==) l1 l2
+    | Const (c1,u1), Const (c2,u2) -> c1 == c2 && u1 == u2
+    | Ind (ind1,u1), Ind (ind2,u2) -> ind1 == ind2 && u1 == u2
+    | Construct (cstr1,u1), Construct (cstr2,u2) -> cstr1 == cstr2 && u1 == u2
+    | Case (ci1,u1,pms1,p1,iv1,c1,bl1), Case (ci2,u2,pms2,p2,iv2,c2,bl2) ->
+      (** FIXME: use deeper equality for contexts *)
+      u1 == u2 && array_eqeq pms1 pms2 &&
+      ci1 == ci2 && hasheq_ctx p1 p2 &&
+      invert_eqeq iv1 iv2 && c1 == c2 && Array.equal hasheq_ctx bl1 bl2
+    | Fix ((ln1, i1),(lna1,tl1,bl1)), Fix ((ln2, i2),(lna2,tl2,bl2)) ->
+      Int.equal i1 i2
+      && Array.equal Int.equal ln1 ln2
+      && array_eqeq lna1 lna2
+      && array_eqeq tl1 tl2
+      && array_eqeq bl1 bl2
+    | CoFix(ln1,(lna1,tl1,bl1)), CoFix(ln2,(lna2,tl2,bl2)) ->
+      Int.equal ln1 ln2
+      && array_eqeq lna1 lna2
+      && array_eqeq tl1 tl2
+      && array_eqeq bl1 bl2
+    | Int i1, Int i2 -> i1 == i2
+    | Float f1, Float f2 -> Float64.equal f1 f2
+    | Array(u1,t1,def1,ty1), Array(u2,t2,def2,ty2) ->
+      u1 == u2 && def1 == def2 && ty1 == ty2 && array_eqeq t1 t2
+    | (Rel _ | Meta _ | Var _ | Sort _ | Cast _ | Prod _ | Lambda _ | LetIn _
+      | App _ | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _
+      | Fix _ | CoFix _ | Int _ | Float _ | Array _), _ -> false
+
+(** Note that the following Make has the side effect of creating
+    once and for all the table we'll use for hash-consing all constr *)
+
+module HashsetTerm =
+  Hashset.Make(struct type t = constr let eq = hasheq end)
+
+module HashsetTermArray =
+  Hashset.Make(struct type t = constr array let eq = array_eqeq end)
+
+let term_table = HashsetTerm.create 19991
+(* The associative table to hashcons terms. *)
+
+let term_array_table = HashsetTermArray.create 4999
+(* The associative table to hashcons term arrays. *)
+
+open Hashset.Combine
+
+module CaseinfoHash =
+struct
+  type t = case_info
+  type u = inductive -> inductive
+  let hashcons hind ci = { ci with ci_ind = hind ci.ci_ind }
+  let pp_info_equal info1 info2 =
+    List.equal (==) info1.ind_tags info2.ind_tags &&
+    Array.equal (List.equal (==)) info1.cstr_tags info2.cstr_tags &&
+    info1.style == info2.style
+  let eq ci ci' =
+    ci.ci_ind == ci'.ci_ind &&
+    ci.ci_relevance == ci'.ci_relevance &&
+    Int.equal ci.ci_npar ci'.ci_npar &&
+    Array.equal Int.equal ci.ci_cstr_ndecls ci'.ci_cstr_ndecls && (* we use [Array.equal] on purpose *)
+    Array.equal Int.equal ci.ci_cstr_nargs ci'.ci_cstr_nargs && (* we use [Array.equal] on purpose *)
+    pp_info_equal ci.ci_pp_info ci'.ci_pp_info  (* we use (=) on purpose *)
+  open Hashset.Combine
+  let hash_bool b = if b then 0 else 1
+  let hash_bool_list = List.fold_left (fun n b -> combine n (hash_bool b))
+  let hash_pp_info info =
+    let h1 = match info.style with
+    | LetStyle -> 0
+    | IfStyle -> 1
+    | LetPatternStyle -> 2
+    | MatchStyle -> 3
+    | RegularStyle -> 4 in
+    let h2 = hash_bool_list 0 info.ind_tags in
+    let h3 = Array.fold_left hash_bool_list 0 info.cstr_tags in
+    combine3 h1 h2 h3
+  let hash ci =
+    let h1 = Ind.CanOrd.hash ci.ci_ind in
+    let h2 = Int.hash ci.ci_npar in
+    let h3 = Array.fold_left combine 0 ci.ci_cstr_ndecls in
+    let h4 = Array.fold_left combine 0 ci.ci_cstr_nargs in
+    let h5 = hash_pp_info ci.ci_pp_info in
+    combinesmall (Sorts.relevance_hash ci.ci_relevance) (combine5 h1 h2 h3 h4 h5)
+end
+
+module Hcaseinfo = Hashcons.Make(CaseinfoHash)
+
+let case_info_hash = CaseinfoHash.hash
+
+let hcons_caseinfo = Hashcons.simple_hcons Hcaseinfo.generate Hcaseinfo.hcons hcons_ind
+
+module Hannotinfo = struct
+    type t = Name.t binder_annot
+    type u = Name.t -> Name.t
+    let hash = hash_annot Name.hash
+    let eq = eq_annot (fun na1 na2 -> na1 == na2)
+    let hashcons h {binder_name=na;binder_relevance} =
+      {binder_name=h na;binder_relevance}
+  end
+module Hannot = Hashcons.Make(Hannotinfo)
+
+let hcons_annot = Hashcons.simple_hcons Hannot.generate Hannot.hcons Name.hcons
+
+
+type mut =
+  | MRel of int
+  | MVar of {mutable x:Id.t; h:hash}
+  | MMeta of metavariable
+  | MEvar of {mutable x:constr pexistential; h:hash}
+  | MSort of {mutable s:Sorts.t; h:hash}
+  | MCast of {mutable c1:constr; k:cast_kind; mutable c2:types; h:hash}
+  | MProd of {mutable na:Name.t binder_annot; mutable c1:types; mutable c2:types; h:hash}
+  | MLambda of {mutable na:Name.t binder_annot; mutable c1:types; mutable c2:constr; h:hash}
+  | MLetIn of {mutable na:Name.t binder_annot; mutable c1:constr; mutable c2:types; mutable c3:constr; h:hash}
+  | MApp of {mutable c:constr; mutable a:constr array; h:hash}
+  | MConst of {mutable c:(Constant.t * Instance.t); h:hash}
+  | MInd of {mutable c:(inductive * Instance.t); h:hash}
+  | MConstruct of {mutable c:(constructor * Instance.t); h:hash}
+  | MCase of {mutable ci:case_info; mutable u:Instance.t; mutable pms:constr array; mutable p:types pcase_return; mutable iv:constr pcase_invert; mutable c:constr; brs:constr pcase_branch array; h:hash}
+  | MFix of {mutable f:(constr, types) pfixpoint; h:hash}
+  | MCoFix of {mutable f:(constr, types) pcofixpoint; h:hash}
+  | MProj of {mutable p:Projection.t; mutable c:constr; h:hash}
+  | MInt of Uint63.t
+  | MFloat of Float64.t
+  | MArray of {mutable u:Instance.t; mutable a:constr array; mutable def:constr; mutable t:types; h:hash}
+[@@warning "-37"]
+
+
+let mutkind (x:constr) : mut = Obj.magic x
+
+let rec repr (t : t) =
+  match HashsetTerm.weak_repr (hash t) t term_table with
+  | Some t -> t
+  | None ->
+    let () = repr_subterms t in
+    (* NB may find a match since we have modified [t] *)
+    HashsetTerm.repr (hash t) t term_table
+
+(* be careful not to shadow t!! also test if being "smart" is even worth doing
+   or maybe we should hack our way into mutating everywhere *)
+and repr_subterms (t : t) =
+  match mutkind t with
+    | MRel _ | MMeta _ | MInt _ | MFloat _ -> ()
+    | MVar v ->
+      let x' = Id.hcons v.x in
+      if x' != v.x then v.x <- x'
+    | MEvar v ->
+      let l = snd v.x in
+      let l' = repr_subterm_list l in
+      if l' != l then v.x <- (fst v.x,l')
+    | MSort v ->
+      let s' = Sorts.hcons v.s in
+      if s' != v.s then v.s <- s'
+    | MCast v ->
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2'
+    | MProd v ->
+      let na' = hcons_annot v.na in
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      if na' != v.na then v.na <- na';
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2'
+    | MLambda v ->
+      let na' = hcons_annot v.na in
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      if na' != v.na then v.na <- na';
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2'
+    | MLetIn v ->
+      let na' = hcons_annot v.na in
+      let c1' = repr v.c1 in
+      let c2' = repr v.c2 in
+      let c3' = repr v.c3 in
+      if na' != v.na then v.na <- na';
+      if c1' != v.c1 then v.c1 <- c1';
+      if c2' != v.c2 then v.c2 <- c2';
+      if c3' != v.c3 then v.c3 <- c3'
+    | MApp v ->
+      let c' = repr v.c in
+      let a' = repr_subterm_array v.a in
+      if c' != v.c then v.c <- c';
+      if a' != v.a then v.a <- a'
+    | MConst v ->
+      let c, u = v.c in
+      let c' = hcons_con c in
+      let u' = Instance.hcons u in
+      if c' != c || u' != u then v.c <- (c',u')
+    | MInd v ->
+      let c, u = v.c in
+      let c' = hcons_ind c in
+      let u' = Instance.hcons u in
+      if c' != c || u' != u then v.c <- (c',u')
+    | MConstruct v ->
+      let c, u = v.c in
+      let c' = hcons_construct c in
+      let u' = Instance.hcons u in
+      if c' != c || u' != u then v.c <- (c',u')
+    | MCase v ->
+      (** FIXME: use a dedicated hashconsing structure *)
+      let repr_ctx (lna, c as orig) =
+        let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
+        let c' = repr c in
+        if c' == c then orig else (lna, c')
+      in
+
+      let ci' = hcons_caseinfo v.ci in
+      let u' = Instance.hcons v.u in
+      let pms' = repr_subterm_array v.pms in
+      let p' = repr_ctx v.p in
+      let iv' = repr_caseinvert_subterms v.iv in
+      let c' = repr v.c in
+      let () = Array.iteri (fun i b -> Array.unsafe_set v.brs i (repr_ctx b)) v.brs in
+
+      if ci' != v.ci then v.ci <- ci';
+      if u' != v.u then v.u <- u';
+      if pms' != v.pms then v.pms <- pms';
+      if p' != v.p then v.p <- p';
+      if iv' != v.iv then v.iv <- iv';
+      if c' != v.c then v.c <- c'
+
+    (* TODO hcons the int array * int??? *)
+    | MFix v ->
+      let (ln,(lna,tl,bl)) = v.f in
+      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
+      let tl' = repr_subterm_array tl in
+      let bl' = repr_subterm_array bl in
+      if tl' != tl || bl' != bl then v.f <- (ln,(lna,tl',bl'))
+    | MCoFix v ->
+      let (ln,(lna,tl,bl)) = v.f in
+      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
+      let tl' = repr_subterm_array tl in
+      let bl' = repr_subterm_array bl in
+      if tl' != tl || bl' != bl then v.f <- (ln,(lna,tl',bl'))
+    | MProj v ->
+      let p' = Projection.hcons v.p in
+      let c' = repr v.c in
+      if p' != v.p then v.p <- p';
+      if c' != v.c then v.c <- c'
+    | MArray v ->
+      let u' = Instance.hcons v.u in
+      let a' = repr_subterm_array v.a in
+      let def' = repr v.def in
+      let t' = repr v.t in
+      if u' != v.u then v.u <- u';
+      if a' != v.a then v.a <- a';
+      if def' != v.def then v.def <- def';
+      if t' != v.t then v.t <- t'
+
+and repr_caseinvert_subterms = function
+  | NoInvert -> NoInvert
+  | CaseInvert {indices} as v ->
+    let indices' = repr_subterm_array indices in
+    if indices' == indices then v else CaseInvert {indices=indices'}
+
+and repr_subterm_list l = List.Smart.map repr l
+
+and repr_subterm_array l =
+  let h = ref 0 in
+  for i = 0 to Array.length l - 1 do
+    let c = repr (Array.unsafe_get l i) in
+    Array.unsafe_set l i c;
+    h := combine !h (hash c)
+  done;
+  HashsetTermArray.repr !h l term_array_table
+
+
+let hcons = repr
 
 (*********************)
 (* Term constructors *)
@@ -233,6 +574,10 @@ let hash_array t =
 
 (* Constructs a de Bruijn index with number n *)
 let rels = Array.init 16 (fun i -> TRel (i+1))
+
+(* Make sure our statically allocated Rels (1 to 16) are considered
+   as canonical, and hence hash-consed to themselves *)
+let () = ignore (repr_subterm_array rels)
 
 let mkRel n = if 0<n && n<=16 then rels.(n-1) else TRel n
 
@@ -324,6 +669,8 @@ let of_kind = function
 | Array (u, a, def, t) ->
   let h = combine4 (Instance.hash u) (hash_array a) (hash def) (hash t) in
   TArray (u,a,def,t, combinesmall 20 h)
+
+let of_kind k = repr (of_kind k)
 
 (* Construct a type *)
 let mkSProp  = of_kind @@ Sort Sorts.sprop
@@ -1220,351 +1567,6 @@ let constr_ord_int f t1 t2 =
 
 let rec compare m n=
   constr_ord_int compare m n
-
-(*******************)
-(*  hash-consing   *)
-(*******************)
-
-(* Hash-consing of [constr] does not use the module [Hashcons] because
-   [Hashcons] is not efficient on deep tree-like data
-   structures. Indeed, [Hashcons] is based the (very efficient)
-   generic hash function [Hashtbl.hash], which computes the hash key
-   through a depth bounded traversal of the data structure to be
-   hashed. As a consequence, for a deep [constr] like the natural
-   number 1000 (S (S (... (S O)))), the same hash is assigned to all
-   the sub [constr]s greater than the maximal depth handled by
-   [Hashtbl.hash]. This entails a huge number of collisions in the
-   hash table and leads to cubic hash-consing in this worst-case.
-
-   In order to compute a hash key that is independent of the data
-   structure depth while being constant-time, an incremental hashing
-   function must be devised. A standard implementation creates a cache
-   of the hashing function by decorating each node of the hash-consed
-   data structure with its hash key. In that case, the hash function
-   can deduce the hash key of a toplevel data structure by a local
-   computation based on the cache held on its substructures.
-   Unfortunately, this simple implementation introduces a space
-   overhead that is damageable for the hash-consing of small [constr]s
-   (the most common case). One can think of an heterogeneous
-   distribution of caches on smartly chosen nodes, but this is forbidden
-   by the use of generic equality in Coq source code. (Indeed, this forces
-   each [constr] to have a unique canonical representation.)
-
-   Given that hash-consing proceeds inductively, we can nonetheless
-   computes the hash key incrementally during hash-consing by changing
-   a little the signature of the hash-consing function: it now returns
-   both the hash-consed term and its hash key. This simple solution is
-   implemented in the following code: it does not introduce a space
-   overhead in [constr], that's why the efficiency is unchanged for
-   small [constr]s. Besides, it does handle deep [constr]s without
-   introducing an unreasonable number of collisions in the hash table.
-   Some benchmarks make us think that this implementation of
-   hash-consing is linear in the size of the hash-consed data
-   structure for our daily use of Coq.
-*)
-
-let array_eqeq t1 t2 =
-  t1 == t2 ||
-  (Int.equal (Array.length t1) (Array.length t2) &&
-   let rec aux i =
-     (Int.equal i (Array.length t1)) || (t1.(i) == t2.(i) && aux (i + 1))
-   in aux 0)
-
-let invert_eqeq iv1 iv2 =
-  match iv1, iv2 with
-  | NoInvert, NoInvert -> true
-  | NoInvert, CaseInvert _ | CaseInvert _, NoInvert -> false
-  | CaseInvert {indices=i1}, CaseInvert {indices=i2} ->
-    i1 == i2
-
-let hasheq_ctx (nas1, c1) (nas2, c2) =
-  array_eqeq nas1 nas2 && c1 == c2
-
-let hasheq t1 t2 =
-  match kind t1, kind t2 with
-    | Rel n1, Rel n2 -> n1 == n2
-    | Meta m1, Meta m2 -> m1 == m2
-    | Var id1, Var id2 -> id1 == id2
-    | Sort s1, Sort s2 -> s1 == s2
-    | Cast (c1,k1,t1), Cast (c2,k2,t2) -> c1 == c2 && k1 == k2 && t1 == t2
-    | Prod (n1,t1,c1), Prod (n2,t2,c2) -> n1 == n2 && t1 == t2 && c1 == c2
-    | Lambda (n1,t1,c1), Lambda (n2,t2,c2) -> n1 == n2 && t1 == t2 && c1 == c2
-    | LetIn (n1,b1,t1,c1), LetIn (n2,b2,t2,c2) ->
-      n1 == n2 && b1 == b2 && t1 == t2 && c1 == c2
-    | App (c1,l1), App (c2,l2) -> c1 == c2 && array_eqeq l1 l2
-    | Proj (p1,c1), Proj(p2,c2) -> p1 == p2 && c1 == c2
-    | Evar (e1,l1), Evar (e2,l2) -> e1 == e2 && List.equal (==) l1 l2
-    | Const (c1,u1), Const (c2,u2) -> c1 == c2 && u1 == u2
-    | Ind (ind1,u1), Ind (ind2,u2) -> ind1 == ind2 && u1 == u2
-    | Construct (cstr1,u1), Construct (cstr2,u2) -> cstr1 == cstr2 && u1 == u2
-    | Case (ci1,u1,pms1,p1,iv1,c1,bl1), Case (ci2,u2,pms2,p2,iv2,c2,bl2) ->
-      (** FIXME: use deeper equality for contexts *)
-      u1 == u2 && array_eqeq pms1 pms2 &&
-      ci1 == ci2 && hasheq_ctx p1 p2 &&
-      invert_eqeq iv1 iv2 && c1 == c2 && Array.equal hasheq_ctx bl1 bl2
-    | Fix ((ln1, i1),(lna1,tl1,bl1)), Fix ((ln2, i2),(lna2,tl2,bl2)) ->
-      Int.equal i1 i2
-      && Array.equal Int.equal ln1 ln2
-      && array_eqeq lna1 lna2
-      && array_eqeq tl1 tl2
-      && array_eqeq bl1 bl2
-    | CoFix(ln1,(lna1,tl1,bl1)), CoFix(ln2,(lna2,tl2,bl2)) ->
-      Int.equal ln1 ln2
-      && array_eqeq lna1 lna2
-      && array_eqeq tl1 tl2
-      && array_eqeq bl1 bl2
-    | Int i1, Int i2 -> i1 == i2
-    | Float f1, Float f2 -> Float64.equal f1 f2
-    | Array(u1,t1,def1,ty1), Array(u2,t2,def2,ty2) ->
-      u1 == u2 && def1 == def2 && ty1 == ty2 && array_eqeq t1 t2
-    | (Rel _ | Meta _ | Var _ | Sort _ | Cast _ | Prod _ | Lambda _ | LetIn _
-      | App _ | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _
-      | Fix _ | CoFix _ | Int _ | Float _ | Array _), _ -> false
-
-(** Note that the following Make has the side effect of creating
-    once and for all the table we'll use for hash-consing all constr *)
-
-module HashsetTerm =
-  Hashset.Make(struct type t = constr let eq = hasheq end)
-
-module HashsetTermArray =
-  Hashset.Make(struct type t = constr array let eq = array_eqeq end)
-
-let term_table = HashsetTerm.create 19991
-(* The associative table to hashcons terms. *)
-
-let term_array_table = HashsetTermArray.create 4999
-(* The associative table to hashcons term arrays. *)
-
-open Hashset.Combine
-
-module CaseinfoHash =
-struct
-  type t = case_info
-  type u = inductive -> inductive
-  let hashcons hind ci = { ci with ci_ind = hind ci.ci_ind }
-  let pp_info_equal info1 info2 =
-    List.equal (==) info1.ind_tags info2.ind_tags &&
-    Array.equal (List.equal (==)) info1.cstr_tags info2.cstr_tags &&
-    info1.style == info2.style
-  let eq ci ci' =
-    ci.ci_ind == ci'.ci_ind &&
-    ci.ci_relevance == ci'.ci_relevance &&
-    Int.equal ci.ci_npar ci'.ci_npar &&
-    Array.equal Int.equal ci.ci_cstr_ndecls ci'.ci_cstr_ndecls && (* we use [Array.equal] on purpose *)
-    Array.equal Int.equal ci.ci_cstr_nargs ci'.ci_cstr_nargs && (* we use [Array.equal] on purpose *)
-    pp_info_equal ci.ci_pp_info ci'.ci_pp_info  (* we use (=) on purpose *)
-  open Hashset.Combine
-  let hash_bool b = if b then 0 else 1
-  let hash_bool_list = List.fold_left (fun n b -> combine n (hash_bool b))
-  let hash_pp_info info =
-    let h1 = match info.style with
-    | LetStyle -> 0
-    | IfStyle -> 1
-    | LetPatternStyle -> 2
-    | MatchStyle -> 3
-    | RegularStyle -> 4 in
-    let h2 = hash_bool_list 0 info.ind_tags in
-    let h3 = Array.fold_left hash_bool_list 0 info.cstr_tags in
-    combine3 h1 h2 h3
-  let hash ci =
-    let h1 = Ind.CanOrd.hash ci.ci_ind in
-    let h2 = Int.hash ci.ci_npar in
-    let h3 = Array.fold_left combine 0 ci.ci_cstr_ndecls in
-    let h4 = Array.fold_left combine 0 ci.ci_cstr_nargs in
-    let h5 = hash_pp_info ci.ci_pp_info in
-    combinesmall (Sorts.relevance_hash ci.ci_relevance) (combine5 h1 h2 h3 h4 h5)
-end
-
-module Hcaseinfo = Hashcons.Make(CaseinfoHash)
-
-let case_info_hash = CaseinfoHash.hash
-
-let hcons_caseinfo = Hashcons.simple_hcons Hcaseinfo.generate Hcaseinfo.hcons hcons_ind
-
-module Hannotinfo = struct
-    type t = Name.t binder_annot
-    type u = Name.t -> Name.t
-    let hash = hash_annot Name.hash
-    let eq = eq_annot (fun na1 na2 -> na1 == na2)
-    let hashcons h {binder_name=na;binder_relevance} =
-      {binder_name=h na;binder_relevance}
-  end
-module Hannot = Hashcons.Make(Hannotinfo)
-
-let hcons_annot = Hashcons.simple_hcons Hannot.generate Hannot.hcons Name.hcons
-
-
-type mut =
-  | MRel of int
-  | MVar of {mutable x:Id.t; h:hash}
-  | MMeta of metavariable
-  | MEvar of {mutable x:constr pexistential; h:hash}
-  | MSort of {mutable s:Sorts.t; h:hash}
-  | MCast of {mutable c1:constr; k:cast_kind; mutable c2:types; h:hash}
-  | MProd of {mutable na:Name.t binder_annot; mutable c1:types; mutable c2:types; h:hash}
-  | MLambda of {mutable na:Name.t binder_annot; mutable c1:types; mutable c2:constr; h:hash}
-  | MLetIn of {mutable na:Name.t binder_annot; mutable c1:constr; mutable c2:types; mutable c3:constr; h:hash}
-  | MApp of {mutable c:constr; mutable a:constr array; h:hash}
-  | MConst of {mutable c:(Constant.t * Instance.t); h:hash}
-  | MInd of {mutable c:(inductive * Instance.t); h:hash}
-  | MConstruct of {mutable c:(constructor * Instance.t); h:hash}
-  | MCase of {mutable ci:case_info; mutable u:Instance.t; mutable pms:constr array; mutable p:types pcase_return; mutable iv:constr pcase_invert; mutable c:constr; brs:constr pcase_branch array; h:hash}
-  | MFix of {mutable f:(constr, types) pfixpoint; h:hash}
-  | MCoFix of {mutable f:(constr, types) pcofixpoint; h:hash}
-  | MProj of {mutable p:Projection.t; mutable c:constr; h:hash}
-  | MInt of Uint63.t
-  | MFloat of Float64.t
-  | MArray of {mutable u:Instance.t; mutable a:constr array; mutable def:constr; mutable t:types; h:hash}
-[@@warning "-37"]
-
-
-let mutkind (x:constr) : mut = Obj.magic x
-
-let rec repr (t : t) =
-  match HashsetTerm.weak_repr (hash t) t term_table with
-  | Some t -> t
-  | None ->
-    let () = repr_subterms t in
-    (* NB may find a match since we have modified [t] *)
-    HashsetTerm.repr (hash t) t term_table
-
-(* be careful not to shadow t!! also test if being "smart" is even worth doing
-   or maybe we should hack our way into mutating everywhere *)
-and repr_subterms (t : t) =
-  match mutkind t with
-    | MRel _ | MMeta _ | MInt _ | MFloat _ -> ()
-    | MVar v ->
-      let x' = Id.hcons v.x in
-      if x' != v.x then v.x <- x'
-    | MEvar v ->
-      let l = snd v.x in
-      let l' = repr_subterm_list l in
-      if l' != l then v.x <- (fst v.x,l')
-    | MSort v ->
-      let s' = Sorts.hcons v.s in
-      if s' != v.s then v.s <- s'
-    | MCast v ->
-      let c1' = repr v.c1 in
-      let c2' = repr v.c2 in
-      if c1' != v.c1 then v.c1 <- c1';
-      if c2' != v.c2 then v.c2 <- c2'
-    | MProd v ->
-      let na' = hcons_annot v.na in
-      let c1' = repr v.c1 in
-      let c2' = repr v.c2 in
-      if na' != v.na then v.na <- na';
-      if c1' != v.c1 then v.c1 <- c1';
-      if c2' != v.c2 then v.c2 <- c2'
-    | MLambda v ->
-      let na' = hcons_annot v.na in
-      let c1' = repr v.c1 in
-      let c2' = repr v.c2 in
-      if na' != v.na then v.na <- na';
-      if c1' != v.c1 then v.c1 <- c1';
-      if c2' != v.c2 then v.c2 <- c2'
-    | MLetIn v ->
-      let na' = hcons_annot v.na in
-      let c1' = repr v.c1 in
-      let c2' = repr v.c2 in
-      let c3' = repr v.c3 in
-      if na' != v.na then v.na <- na';
-      if c1' != v.c1 then v.c1 <- c1';
-      if c2' != v.c2 then v.c2 <- c2';
-      if c3' != v.c3 then v.c3 <- c3'
-    | MApp v ->
-      let c' = repr v.c in
-      let a' = repr_subterm_array v.a in
-      if c' != v.c then v.c <- c';
-      if a' != v.a then v.a <- a'
-    | MConst v ->
-      let c, u = v.c in
-      let c' = hcons_con c in
-      let u' = Instance.hcons u in
-      if c' != c || u' != u then v.c <- (c',u')
-    | MInd v ->
-      let c, u = v.c in
-      let c' = hcons_ind c in
-      let u' = Instance.hcons u in
-      if c' != c || u' != u then v.c <- (c',u')
-    | MConstruct v ->
-      let c, u = v.c in
-      let c' = hcons_construct c in
-      let u' = Instance.hcons u in
-      if c' != c || u' != u then v.c <- (c',u')
-    | MCase v ->
-      (** FIXME: use a dedicated hashconsing structure *)
-      let repr_ctx (lna, c as orig) =
-        let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
-        let c' = repr c in
-        if c' == c then orig else (lna, c')
-      in
-
-      let ci' = hcons_caseinfo v.ci in
-      let u' = Instance.hcons v.u in
-      let pms' = repr_subterm_array v.pms in
-      let p' = repr_ctx v.p in
-      let iv' = repr_caseinvert_subterms v.iv in
-      let c' = repr v.c in
-      let () = Array.iteri (fun i b -> Array.unsafe_set v.brs i (repr_ctx b)) v.brs in
-
-      if ci' != v.ci then v.ci <- ci';
-      if u' != v.u then v.u <- u';
-      if pms' != v.pms then v.pms <- pms';
-      if p' != v.p then v.p <- p';
-      if iv' != v.iv then v.iv <- iv';
-      if c' != v.c then v.c <- c'
-
-    (* TODO hcons the int array * int??? *)
-    | MFix v ->
-      let (ln,(lna,tl,bl)) = v.f in
-      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
-      let tl' = repr_subterm_array tl in
-      let bl' = repr_subterm_array bl in
-      if tl' != tl || bl' != bl then v.f <- (ln,(lna,tl',bl'))
-    | MCoFix v ->
-      let (ln,(lna,tl,bl)) = v.f in
-      let () = Array.iteri (fun i x -> Array.unsafe_set lna i (hcons_annot x)) lna in
-      let tl' = repr_subterm_array tl in
-      let bl' = repr_subterm_array bl in
-      if tl' != tl || bl' != bl then v.f <- (ln,(lna,tl',bl'))
-    | MProj v ->
-      let p' = Projection.hcons v.p in
-      let c' = repr v.c in
-      if p' != v.p then v.p <- p';
-      if c' != v.c then v.c <- c'
-    | MArray v ->
-      let u' = Instance.hcons v.u in
-      let a' = repr_subterm_array v.a in
-      let def' = repr v.def in
-      let t' = repr v.t in
-      if u' != v.u then v.u <- u';
-      if a' != v.a then v.a <- a';
-      if def' != v.def then v.def <- def';
-      if t' != v.t then v.t <- t'
-
-and repr_caseinvert_subterms = function
-  | NoInvert -> NoInvert
-  | CaseInvert {indices} as v ->
-    let indices' = repr_subterm_array indices in
-    if indices' == indices then v else CaseInvert {indices=indices'}
-
-and repr_subterm_list l = List.Smart.map repr l
-
-and repr_subterm_array l =
-  let h = ref 0 in
-  for i = 0 to Array.length l - 1 do
-    let c = repr (Array.unsafe_get l i) in
-    Array.unsafe_set l i c;
-    h := combine !h (hash c)
-  done;
-  HashsetTermArray.repr !h l term_array_table
-
-(* Make sure our statically allocated Rels (1 to 16) are considered
-   as canonical, and hence hash-consed to themselves *)
-let () = ignore (repr_subterm_array rels)
-
-let hcons = repr
 
 (* let hcons_types = hcons_constr *)
 
