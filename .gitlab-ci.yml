@@ -835,6 +835,7 @@ plugin:ci-paramcoq:
 plugin:ci-perennial:
   extends: .ci-template-flambda
 
+
 plugin:plugin-tutorial:
   stage: build
   interruptible: true
