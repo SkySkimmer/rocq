@@ -156,7 +156,7 @@ let body_of_constant_body access env cb =
      None
   | Def c ->
     let u = match cb.const_universes with
-    | Monomorphic _ -> Opaqueproof.PrivateMonomorphic ()
+    | Monomorphic _ -> Opaqueproof.PrivateMonomorphic ((), Univ.ContextSet.empty)
     | Polymorphic auctx -> Opaqueproof.PrivatePolymorphic (Univ.AUContext.size auctx, Univ.ContextSet.empty)
     in
     Some (Mod_subst.force_constr c, u, Declareops.constant_polymorphic_context cb)

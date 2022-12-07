@@ -19,11 +19,11 @@ open Mod_subst
     An [opaque] proof terms holds an index into an opaque table. *)
 
 type 'a delayed_universes =
-| PrivateMonomorphic of 'a
+| PrivateMonomorphic of 'a * Univ.ContextSet.t
 | PrivatePolymorphic of int * Univ.ContextSet.t
   (** Number of surrounding bound universes + local constraints *)
 
-type proofterm = (constr * Univ.ContextSet.t delayed_universes) Future.computation
+type proofterm = (constr * Univ.Constraint.t delayed_universes) Future.computation
 type opaquetab
 type opaque
 
@@ -54,7 +54,7 @@ type indirect_accessor = {
 (** From a [opaque] back to a [constr]. This might use the
     indirect opaque accessor given as an argument. *)
 val force_proof : indirect_accessor -> opaquetab -> opaque -> constr * unit delayed_universes
-val force_constraints : indirect_accessor -> opaquetab -> opaque -> Univ.ContextSet.t
+val force_constraints : indirect_accessor -> opaquetab -> opaque -> Univ.Constraint.t
 
 val subst_opaque : substitution -> opaque -> opaque
 

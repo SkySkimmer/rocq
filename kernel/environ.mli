@@ -348,6 +348,8 @@ val push_subgraph : Univ.ContextSet.t -> env -> env
    also checks that they do not imply new transitive constraints
    between pre-existing universes in [env]. *)
 
+val split_subgraph : Univ.ContextSet.t -> env -> Univ.Constraint.t * env
+
 val set_engagement : engagement -> env -> env
 val set_typing_flags : typing_flags -> env -> env
 val set_cumulative_sprop : bool -> env -> env

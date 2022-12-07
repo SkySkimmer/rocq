@@ -21,7 +21,7 @@ type cooking_info = {
   abstract : Constr.named_context * Univ.Instance.t * Univ.AUContext.t }
 
 type 'a delayed_universes =
-| PrivateMonomorphic of 'a
+| PrivateMonomorphic of 'a * Univ.ContextSet.t
 | PrivatePolymorphic of int * Univ.ContextSet.t
 
 type opaque_proofterm = (Constr.t * unit delayed_universes) option
@@ -32,10 +32,10 @@ type indirect_accessor = {
 }
 
 let drop_mono = function
-| PrivateMonomorphic _ -> PrivateMonomorphic ()
+| PrivateMonomorphic (_, ctx) -> PrivateMonomorphic ((), ctx)
 | PrivatePolymorphic _ as ctx -> ctx
 
-type proofterm = (constr * Univ.ContextSet.t delayed_universes) Future.computation
+type proofterm = (constr * Univ.Constraint.t delayed_universes) Future.computation
 
 type opaque =
 | Indirect of substitution list * cooking_info list * DirPath.t * int (* subst, discharge, lib, index *)
@@ -60,7 +60,8 @@ let create dp cu tab =
   let hcons (c, u) =
     let c = Constr.hcons c in
     let u = match u with
-    | PrivateMonomorphic u -> PrivateMonomorphic (Univ.hcons_universe_context_set u)
+    | PrivateMonomorphic (u, u') ->
+      PrivateMonomorphic (Univ.hcons_constraints u, Univ.hcons_universe_context_set u')
     | PrivatePolymorphic (n, u) -> PrivatePolymorphic (n, Univ.hcons_universe_context_set u)
     in
     (c, u)
@@ -114,8 +115,8 @@ let force_proof access { opaque_val = prfs; opaque_dir = odp; _ } = function
       (c, u)
 
 let get_mono (_, u) = match u with
-| PrivateMonomorphic ctx -> ctx
-| PrivatePolymorphic _ -> Univ.ContextSet.empty
+| PrivateMonomorphic (ctx, _) -> ctx
+| PrivatePolymorphic _ -> Univ.Constraint.empty
 
 let force_constraints _access { opaque_val = prfs; opaque_dir = odp; _ } = function
 | Indirect (_,_,dp,i) ->
@@ -123,7 +124,7 @@ let force_constraints _access { opaque_val = prfs; opaque_dir = odp; _ } = funct
       then
         let cu = Int.Map.find i prfs in
         get_mono (Future.force cu)
-      else Univ.ContextSet.empty
+      else Univ.Constraint.empty
 
 module FMap = Future.UUIDMap
 

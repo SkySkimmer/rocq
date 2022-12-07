@@ -204,7 +204,7 @@ let cook_constr { Opaqueproof.modlist ; abstract } (c, priv) =
   let cache = RefTable.create 13 in
   let abstract, usubst, abs_ctx = abstract in
   let usubst, priv = match priv with
-  | Opaqueproof.PrivateMonomorphic () ->
+  | Opaqueproof.PrivateMonomorphic ((), _) ->
     let () = assert (AUContext.is_empty abs_ctx) in
     let () = assert (Instance.is_empty usubst) in
     usubst, priv

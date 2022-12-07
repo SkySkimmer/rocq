@@ -300,7 +300,7 @@ let check_delayed (type a) (handle : a effect_handler) tyenv (body : a proof_out
   let ((body, uctx), side_eff) = body in
   let (body, uctx', valid_signatures) = handle env body side_eff in
   let uctx = ContextSet.union uctx uctx' in
-  let env = push_context_set uctx env in
+  let global, env = split_subgraph uctx env in
   let body,env,ectx = skip_trusted_seff valid_signatures body env in
   let j = Typeops.infer env body in
   let j = unzip ectx j in
@@ -308,7 +308,7 @@ let check_delayed (type a) (handle : a effect_handler) tyenv (body : a proof_out
   let c = j.uj_val in
   let () = check_section_variables env declared tyj.utj_val body in
   feedback_completion_typecheck feedback_id;
-  c, Opaqueproof.PrivateMonomorphic uctx
+  c, Opaqueproof.PrivateMonomorphic (global, uctx)
 | PolyTyCtx (env, tj, usubst, auctx, declared, feedback_id) ->
   let ((body, ctx), side_eff) = body in
   let body, ctx', _ = handle env body side_eff in

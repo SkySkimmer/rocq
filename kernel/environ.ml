@@ -439,6 +439,19 @@ let push_subgraph (levels,csts) env =
   in
   map_universes add_subgraph env
 
+let split_subgraph (levels,csts) env =
+  let lbound = universes_lbound env in
+  let g = env.env_stratification.env_universes in
+  let newg = Univ.LSet.fold (fun v g -> UGraph.add_universe ~lbound ~strict:false v g) levels g in
+  let newg = UGraph.merge_constraints csts newg in
+  let restricted =
+    if Univ.Constraint.is_empty csts then Univ.Constraint.empty
+    else UGraph.constraints_for ~kept:(UGraph.domain g) newg
+  in
+  let s = env.env_stratification in
+  let env = { env with env_stratification = { s with env_universes = newg } } in
+  restricted, env
+
 let set_engagement c env =
   { env with env_stratification =
     { env.env_stratification with env_engagement = c } }
