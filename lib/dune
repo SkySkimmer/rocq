@@ -5,7 +5,7 @@
  (wrapped false)
  (modules_without_implementation xml_datatype)
  (libraries
-  coq-core.boot coq-core.clib coq-core.config
+  coq-core.boot coq-core.clib coq-core.config runtime_events
   (select instr.ml from
    (!coqperf -> instr.noperf.ml)
    (coqperf -> instr.perf.ml))))
