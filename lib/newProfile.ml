@@ -264,11 +264,11 @@ let init_poll () =
       | EV_MAJOR ->
         current_major := ts :: !current_major;
         duration ~is_gc:true ~time:(to_time ts) "gc_major" "B" ()
-      | _ -> ()
+      | ev -> duration ~is_gc:true ~time:(to_time ts) (runtime_phase_name ev) "B" ()
     in
     let update ref stack ts =
       match !stack with
-      | [] -> assert false
+      | [] -> () (* not clear if possible *)
       | start :: rest ->
         stack := rest;
         ref := Int64.(add !ref (sub (Timestamp.to_int64 ts) (Timestamp.to_int64 start)))
@@ -280,11 +280,11 @@ let init_poll () =
       | EV_MAJOR ->
         update Counters.current_major_time current_major ts;
         duration ~is_gc:true ~time:(to_time ts) "gc_major" "E" ()
-      | _ -> ()
+      | ev -> duration ~is_gc:true ~time:(to_time ts) (runtime_phase_name ev) "E" ()
     in
     let lost_events start stop =
       (* not sure what start/stop mean *)
-      incr Counters.current_lost_events
+      Counters.current_lost_events := !Counters.current_lost_events + stop - start
     in
     Callbacks.create ~runtime_begin ~runtime_end ~lost_events ()
   in
