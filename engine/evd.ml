@@ -1882,6 +1882,104 @@ module MiniEConstr = struct
 
   let dbg = CDebug.create ~name:"to_constr" ()
 
+  type skeleton =
+    | NoVars of constr
+    | HasVars of { kind :  (skeleton, skeleton, Sorts.t, UVars.Instance.t, Sorts.relevance) kind_of_term }
+
+  let get_lift clos pos =
+    let rec aux accu n lft =
+      if Int.equal n 0 then accu
+      else match lft with
+        | [] -> assert false
+        | k :: lft -> aux (accu + k) (n - 1) lft
+    in
+    let ans = match Int.Map.find_opt pos clos.evc_cache.contents with
+      | None ->
+        let ans = aux 0 pos clos.evc_stack in
+        let () = clos.evc_cache := Int.Map.add pos ans clos.evc_cache.contents in
+        ans
+      | Some ans -> ans
+    in
+    clos.evc_lift + ans
+
+  let clos_var clos id =
+    match Id.Map.find_opt id clos.evc_map with
+    | None -> None
+    | Some (depth, lazy v) ->
+      let pos = clos.evc_depth - depth - 1 in
+      let k = get_lift clos pos in
+      Some (lift_substituend k v)
+
+  let _instantiate_skeleton ~expand sigma clos c =
+    let next s = { s with evc_lift = s.evc_lift + 1 } in
+    let rec self clos = function
+      | NoVars c -> c
+      | HasVars { kind } -> match kind with
+        | Rel _ | Const _ | Ind _ | Construct _ | Sort _ | Int _ | Float _ | String _ | Meta _ ->
+          assert false (* HasVars *)
+        | Var id ->
+          (* probably not right *)
+          begin match clos_var clos id with
+          | None -> mkVar id
+          | Some v -> v
+          end
+        | App (h, args) ->
+          let h = self clos h in
+          let args = Array.map (self clos) args in
+          mkApp (h, args)
+        | Cast (c1, k, c2) -> mkCast (self clos c1, k, self clos c2)
+        | Prod (na, c1, c2) -> mkProd (na, self clos c1, self (next clos) c2)
+        | Lambda (na, c1, c2) -> mkLambda (na, self clos c1, self (next clos) c2)
+        | LetIn (na, c1, c2, c3) -> mkLetIn (na, self clos c1, self clos c2, self (next clos) c3)
+        | Proj (p, r, c) -> mkProj (p, r, self clos c)
+        | Fix (i, rc) -> mkFix (i, self_rec clos rc)
+        | CoFix (i, rc) -> mkCoFix (i, self_rec clos rc)
+        | Array (u, elems, def, ty) ->
+          mkArray (u, Array.map (self clos) elems, self clos def, self clos ty)
+        | Evar (evk,args) ->
+          begin match EvMap.find_opt evk sigma.undf_evars with
+          | None ->
+            let args = SList.Skip.map (self clos) args in
+            mkEvar (evk, args)
+          | Some evi ->
+            let rec inst ctx args = match ctx, SList.view args with
+              | [], None -> SList.empty
+              | decl :: ctx, Some (c, args) ->
+                let c = match c with
+                  | None ->
+                    let c = clos_var clos (NamedDecl.get_id decl) in
+                    if expand then match c with
+                      | None -> Some (mkVar (NamedDecl.get_id decl))
+                      | Some _  -> c
+                    else c
+                  | Some c -> Some (self clos c)
+                in
+                SList.cons_opt c (inst ctx args)
+              | _ :: _, None | [], Some _ -> instance_mismatch ()
+            in
+            let args = inst (evar_filtered_context evi) args in
+            mkEvar (evk, args)
+          end
+        | Case (ci, u, pms, (p, rel), iv, t, br) ->
+          let map_ctx (nas, c) =
+            let clos = iterate next (Array.length nas) clos in
+            nas, self clos c
+          in
+          let pms = Array.map (self clos) pms in
+          let p = map_ctx p in
+          let iv = match iv with
+            | NoInvert -> NoInvert
+            | CaseInvert { indices } -> CaseInvert { indices = Array.map (self clos) indices }
+          in
+          let t = self clos t in
+          let br = Array.map map_ctx br in
+          mkCase (ci, u, pms, (p, rel), iv, t, br)
+    and self_rec clos (nas, tys, bdys) =
+      let clos' = iterate next (Array.length tys) clos in
+      (nas, Array.map (self clos) tys, Array.map (self clos') bdys)
+    in
+    self clos c
+
   let to_constr_gen ~expand ~ignore_missing sigma c =
     let saw_evar = ref false in
     let steps = ref 0 in
@@ -1891,29 +1989,9 @@ module MiniEConstr = struct
     in
     let qvar_value q = UState.nf_qvar sigma.universes q in
     let next s = { s with evc_lift = s.evc_lift + 1 } in
-    let find clos id = match Id.Map.find_opt id clos.evc_map with
-    | None -> None
-    | Some (depth, lazy v) ->
-      let pos = clos.evc_depth - depth - 1 in
-      let rec get_lift accu n lft =
-        if Int.equal n 0 then accu
-        else match lft with
-        | [] -> assert false
-        | k :: lft -> get_lift (accu + k) (n - 1) lft
-      in
-      let ans = match Int.Map.find_opt pos clos.evc_cache.contents with
-      | None ->
-        let ans = get_lift 0 pos clos.evc_stack in
-        let () = clos.evc_cache := Int.Map.add pos ans clos.evc_cache.contents in
-        ans
-      | Some ans -> ans
-      in
-      let k = clos.evc_lift + ans in
-      Some (lift_substituend k v)
-    in
     let rec self clos c = incr steps; match Constr.kind c with
     | Var id ->
-      begin match find clos id with
+      begin match clos_var clos id with
       | None -> c
       | Some v -> v
       end
@@ -1934,7 +2012,7 @@ module MiniEConstr = struct
           | decl :: ctx, Some (c, args) ->
             let c = match c with
             | None ->
-              let c = find clos (NamedDecl.get_id decl) in
+              let c = clos_var clos (NamedDecl.get_id decl) in
               if expand then match c with
               | None -> Some (mkVar (NamedDecl.get_id decl))
               | Some _  -> c
