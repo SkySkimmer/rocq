@@ -12,6 +12,7 @@ open Util
 open Names
 open Constr
 open Context
+open CoqSharingAnalyser
 
 (* TODO explain how this works *)
 
@@ -113,6 +114,13 @@ module Tbl = struct
 
 end
 
+module UBRelKey = struct
+  type t = int SList.t
+  let compare x y = SList.compare Int.compare x y
+end
+
+module UBRelMap = Map.Make(UBRelKey)
+
 type local_env = {
   (* only used for globals, rel context is not correct *)
   globals : Environ.env;
@@ -125,6 +133,17 @@ type local_env = {
   assum_uids : int Tbl.t;
   (* the surrounding table is for the body, the inner table for the type *)
   letin_uids : int Tbl.t Tbl.t;
+  (* counter used in the "hconstr-sharing-trace" debug *)
+  restart_cnt : int ref;
+  (* sharing info (needs to be optional to handle the Case binders,
+     also if we want a mode which doesn't exploit sharing,
+     also should make jscoq devs's work easier).
+     The [int] is the id of this restart, for debugging.
+  *)
+  sharing_info : (SharingAnalyser.analysis ref * int) option;
+  (* already seen terms according to sharing info
+     we keep the [analysis] because if the ub rels are different we need to restart *)
+  shared_seen : (SharingAnalyser.analysis * Constr.t * t UBRelMap.t) Int.Map.t ref;
 }
 
 let empty_env env = {
@@ -134,6 +153,9 @@ let empty_env env = {
   unknown_cnt = ref 0;
   assum_uids = Tbl.create 47;
   letin_uids = Tbl.create 47;
+  restart_cnt = ref 0;
+  sharing_info = None;
+  shared_seen = ref Int.Map.empty;
 }
 
 (* still used in fixpoint *)
@@ -352,10 +374,120 @@ let nonrel_leaf tbl c = match kind c with
     Tbl.raw_find tbl h (fun c' -> eq_leaf c c')
   | _ -> None
 
+(* v tells which rels are bound *)
+let ubrels_from_env (type a) local_env (v:a SList.t) =
+  let rec aux local_env rels = match rels with
+    | SList.Nil -> SList.empty
+    | SList.Cons (_,tl) ->
+      SList.cons (Range.hd local_env)
+        (aux (Range.tl local_env) tl)
+    | SList.Default (n,tl) ->
+      SList.defaultn n (aux (Range.skipn n local_env) tl)
+  in
+  aux local_env.rels v
+
+type sharing_info =
+  | Fresh of int * SharingAnalyser.analysis
+  | RelsDiffer of int * local_env * UBRelKey.t
+  | Seen of t
+
+let visit_info info c =
+  let rec aux c =
+    let next, this = SharingAnalyser.step !info in
+    info := next;
+    match this with
+    | SharingAnalyser.Fresh _ -> Constr.iter aux c
+    | SharingAnalyser.Seen _ -> ()
+  in
+  aux c
+
+let trace = CDebug.create ~name:"hconstr-sharing-trace" ()
+
+let sharing_info local_env c =
+  match local_env.sharing_info with
+  | None -> None
+  | Some (info, this_restart) ->
+    let _debug = mk_debug !info c in
+    let next, this_info = SharingAnalyser.step !info in
+    info := next;
+    (* if we see Fresh but already have a value, we won't recurse
+       so we need to advance the info manually
+       if we see Seen but don't have a value, we need to reset the info while recursing
+    *)
+    let this = match this_info with
+      | SharingAnalyser.Fresh n ->
+        trace Pp.(fun () -> str "Fresh " ++ int n ++ str " in " ++ int this_restart);
+        n
+      | SharingAnalyser.Seen n ->
+        trace Pp.(fun () -> str "Seen " ++ int n ++ str " in " ++ int this_restart);
+        n
+    in
+    match Int.Map.find_opt this !(local_env.shared_seen) with
+    | None ->
+      let () = match this_info with
+        | SharingAnalyser.Fresh _ -> ()
+        | SharingAnalyser.Seen _ -> assert false
+      in
+      Some (Fresh (this, next))
+    | Some (restart_info, orig, m) ->
+      if c != orig then CErrors.anomaly Pp.(str "hconstr sharing_info mismatch at idx " ++ int this);
+      let key =
+        let key', _ = UBRelMap.choose m in
+        ubrels_from_env local_env key'
+      in
+      match UBRelMap.find_opt key m with
+      | None ->
+        let local_env = match this_info with
+          | SharingAnalyser.Fresh _ ->
+            assert (SharingAnalyser.analysis_equal !info restart_info);
+            local_env
+          | SharingAnalyser.Seen _ ->
+            incr local_env.restart_cnt;
+            trace Pp.(fun () -> str "RESTART " ++ int !(local_env.restart_cnt));
+            { local_env with sharing_info = Some (ref restart_info, !(local_env.restart_cnt)) }
+        in
+        Some (RelsDiffer (this, local_env, key))
+      | Some v ->
+        let () = match this_info with
+          | SharingAnalyser.Fresh _ ->
+            assert (SharingAnalyser.analysis_equal !info restart_info);
+            trace Pp.(fun () -> str "SKIP");
+            (* NB we already did the step for c itself, so don't call directly [visit_info info c] *)
+            Constr.iter (visit_info info) c
+          | SharingAnalyser.Seen _ -> ()
+        in
+        Some (Seen v)
+
 let steps = ref 0
 
 let rec of_constr tbl local_env c =
   incr steps;
+  match sharing_info local_env c with
+  | None -> of_constr_fresh tbl local_env ~unbound_rels:None c
+  | Some (Fresh (idx, c_info)) ->
+    let v = of_constr_fresh tbl local_env ~unbound_rels:None c in
+    let () =
+      local_env.shared_seen :=
+        Int.Map.add idx
+          (* add [c] NOT [v.self] otherwise we will get false positive mismatch errors *)
+          (c_info, c, UBRelMap.singleton v.unbound_rels v)
+          !(local_env.shared_seen)
+    in
+    v
+  | Some (RelsDiffer (idx, local_env, key)) ->
+    let v = of_constr_fresh tbl local_env ~unbound_rels:(Some key) c in
+    let () =
+      local_env.shared_seen :=
+        Int.Map.update idx
+          (function
+            | None -> assert false
+            | Some (restart_info,c,m) -> Some (restart_info, c, UBRelMap.add v.unbound_rels v m))
+          !(local_env.shared_seen)
+    in
+    v
+  | Some (Seen v) -> v.refcount <- v.refcount + 1; v
+
+and of_constr_fresh tbl local_env ~unbound_rels c =
   match nonrel_leaf tbl c with
   | Some v -> v
   | None ->
@@ -371,9 +503,11 @@ let rec of_constr tbl local_env c =
     match Tbl.raw_find tbl hash (fun c' -> raw_equal c' ~isRel ~kind) with
     | Some c' -> c'.refcount <- c'.refcount + 1; c'
     | None ->
-      let unbound_rels = match kind with
-        | Rel n -> SList.defaultn (n-1) (SList.cons isRel SList.empty)
-        | _ -> kind_unbound_rels kind
+      let unbound_rels = match unbound_rels with
+        | Some v -> v
+        | None -> match kind with
+          | Rel n -> SList.defaultn (n-1) (SList.cons isRel SList.empty)
+          | _ -> kind_unbound_rels kind
       in
       let c =
         let self = kind_to_constr kind in
@@ -438,6 +572,7 @@ and of_constr_aux tbl local_env c =
       p, bl
     in
     let of_ctx (bnd, c) (bnd', _) =
+      assert (Array.length bnd = List.length bnd');
       let () = hcons_inplace hcons_annot bnd in
       let local_env = push_rel_context tbl local_env bnd' in
       let c = of_constr tbl local_env c in
@@ -482,12 +617,17 @@ and of_constr_aux tbl local_env c =
 
 and push_rel_context tbl local_env ctx =
   List.fold_right (fun d local_env ->
-      let d = RelDecl.map_constr_het (fun r -> r) (of_constr tbl local_env) d in
+      let d = RelDecl.map_constr_het (fun r -> r)
+          (of_constr tbl { local_env with sharing_info = None })
+          d
+      in
       push_decl d local_env)
     ctx
     local_env
 
 let dbg = CDebug.create ~name:"hconstr" ()
+
+let dbg_sharing = CDebug.create ~name:"constrsharing" ()
 
 let tree_size c =
   let rec aux size c =
@@ -495,10 +635,61 @@ let tree_size c =
   in
   aux 0 c
 
+
+(* WARNING very slow *)
+let debug_check c info =
+  let info = ref info in
+  let seen = ref [] in
+  let cnt = ref 0 in
+  let rec aux c =
+    let next_info, this = SharingAnalyser.step !info in
+    info := next_info;
+    match this, List.find_opt (fun (c',_) -> c == c') !seen with
+    | SharingAnalyser.Seen i, Some (_,j) ->
+      if not (Int.equal i j) then
+        CErrors.anomaly Pp.(str "check-hconstr-sharing mismatch: got " ++ int i ++
+                            str " but should be " ++ int j)
+    | SharingAnalyser.Fresh i, None ->
+      assert (Int.equal i !cnt);
+      seen := (c,i) :: !seen;
+      incr cnt;
+      Constr.iter aux c
+    | _ -> assert false
+  in
+  let () = aux c in
+  assert (SharingAnalyser.is_done !info);
+  ()
+
+let check_sharing, _ = CDebug.create_full ~name:"check-hconstr-sharing" ()
+
+let hcons_before, _ = CDebug.create_full ~name:"hcons-before-hconstr" ()
+
 let of_constr env c =
+  let c = if CDebug.get_flag hcons_before then Constr.hcons c else c in
   let local_env = empty_env env in
   let local_env = iterate push_unknown_rel (Environ.nb_rel env) local_env in
+  let c_sharing_info = NewProfile.profile "sharingAnalyser" (fun () ->
+      SharingAnalyser.analyse Constr.constr_descr (Obj.repr (c : Constr.t)))
+      ()
+  in
+  let _debug = mk_debug c_sharing_info c in
+  let local_env = { local_env with sharing_info = Some (ref c_sharing_info, 0) } in
   let tbl = Tbl.create 57 in
+  let () =
+    dbg_sharing Pp.(fun () ->
+        let l = SharingAnalyser.to_list c_sharing_info in
+        let (fresh,shared) = List.fold_left (fun (fresh,shared) -> function
+            | SharingAnalyser.Fresh _ -> fresh+1, shared
+            | SharingAnalyser.Seen _ -> fresh, shared+1)
+            (0,0)
+            l
+        in
+        str "raw length = " ++ int (SharingAnalyser.raw_length c_sharing_info) ++ pr_comma() ++
+        str "fresh = " ++ int fresh ++ pr_comma() ++
+        str "shared = " ++ int shared
+      )
+  in
+  let () = if CDebug.get_flag check_sharing then debug_check c c_sharing_info in
   steps := 0;
   let c = NewProfile.profile "HConstr.to_constr" (fun () -> of_constr tbl local_env c) () in
   dbg Pp.(fun () ->
