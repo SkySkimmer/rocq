@@ -109,6 +109,11 @@ let step {data; offset; seen;} =
   in
   {data; offset; seen}, info
 
+let ref_step info =
+  let next, this = step !info in
+  info := next;
+  this
+
 let is_done { data; offset } = String.length data = offset
 
 let rec to_list_rev acc x =

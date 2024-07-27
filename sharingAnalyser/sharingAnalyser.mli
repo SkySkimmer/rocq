@@ -48,6 +48,8 @@ type sharing_info =
 
 val step : analysis -> analysis * sharing_info
 
+val ref_step : analysis ref -> sharing_info
+
 val is_done : analysis -> bool
 
 val to_list : analysis -> sharing_info list
