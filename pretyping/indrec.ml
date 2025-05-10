@@ -113,6 +113,7 @@ type case_analysis = {
   case_type : EConstr.t;
 }
 
+(* Converts a case_analysis into a representation outside the kernel *)
 let eval_case_analysis case =
   let open EConstr in
   let body = it_mkLambda_or_LetIn case.case_body case.case_arity in
@@ -709,6 +710,13 @@ let build_mutual_induction_scheme env sigma ?(force_mutual=false) = function
       mis_make_indrec env sigma ~force_mutual listdepkind mib u
   | _ -> anomaly (Pp.str "build_induction_scheme expects a non empty list of inductive types.")
 
+(* 
+   env   : unsafe unironement
+   sigma : existantial variables
+   pind  : a kernel name couple (kn1,kn2)
+   dep   : bool
+   kind  : type of incomplete terms
+ *)
 let build_induction_scheme env sigma pind dep kind =
   let (mib,mip) as specif = lookup_mind_specif env (fst pind) in
   if dep && not (Inductiveops.has_dependent_elim specif) then

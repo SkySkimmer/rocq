@@ -440,9 +440,11 @@ type evar_flags =
     rewrite_rule_evars : Evar.Set.t;
   }
 
+(* inductive * (scheme_name * sort * mutual *)
 type side_effect_role =
-| Schema of inductive * string
+| Schema of inductive * (string list * UnivGen.QualityOrSet.t option * bool)
 
+(* Schemes already defined but not yet in the global env *)
 type side_effects = {
   seff_private : Safe_typing.private_constants;
   seff_roles : side_effect_role Cmap_env.t;

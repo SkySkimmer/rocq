@@ -361,7 +361,16 @@ let print_registered_schemes () =
     pr_global (ConstRef c) ++ str " registered as " ++ str kind ++ str " for " ++ pr_global (IndRef ind)
   in
   let pr_schemes_of_ind (ind, schemes) =
-    prlist_with_sep fnl (pr_one_scheme ind) (CString.Map.bindings schemes)
+    let tmp = UnivGen.Map.bindings schemes in
+    let tmpp = List.map (fun ((a,c,d),b) ->
+        (* /!\ will print 2 times if both individual and mutual (represented by bool d here) are defined for a given scheme *)
+        let s1 = String.concat " " a in
+        let s2 = match c with
+          | Some s -> " (" ^ (UnivGen.family_to_str s) ^ ")"
+          | None -> " (None)"
+        in
+        ((s1 ^ s2),b)) tmp in
+    prlist_with_sep fnl (pr_one_scheme ind) tmpp
   in
   hov 0 (prlist_with_sep fnl pr_schemes_of_ind (Indmap_env.bindings schemes))
 
@@ -1383,9 +1392,6 @@ let vernac_scheme atts l =
   let register = Attributes.(parse (bool_attribute ~name:"register") atts) in
   let register = Option.default true register in
   Indschemes.do_scheme ~register (Global.env ()) l
-
-let vernac_scheme_equality ?locmap sch id =
-  Indschemes.do_scheme_equality ?locmap sch id
 
 (* [XXX] locmap unused here *)
 let vernac_combined_scheme lid l ~locmap =
@@ -2422,9 +2428,6 @@ let vernac_locate ~pstate query =
   | LocateOther (s, qid) -> Prettyp.print_located_other env s qid
   | LocateFile f -> locate_file f
 
-let warn_unknown_scheme_kind = CWarnings.create ~name:"unknown-scheme-kind"
-    Pp.(fun sk -> str "Unknown scheme kind " ++ Libnames.pr_qualid sk ++ str ".")
-
 let vernac_register ~atts qid r =
   let gr = Smartlocate.global_with_alias qid in
   match r with
@@ -2462,13 +2465,12 @@ let vernac_register ~atts qid r =
       | ConstRef c -> c
       | _ -> CErrors.user_err ?loc:qid.loc Pp.(str "Register Scheme: expecing a constant.")
     in
-    let scheme_kind_s = Libnames.string_of_qualid scheme_kind in
-    let () = if not (Ind_tables.is_declared_scheme_object scheme_kind_s) then
-        warn_unknown_scheme_kind ?loc:scheme_kind.loc scheme_kind
+    let () = if not (Ind_tables.is_declared_scheme_object (scheme_kind, Some UnivGen.QualityOrSet.qtype,false)) then
+        CErrors.user_err Pp.(str ("unknown scheme kind " ^ (String.concat " " scheme_kind)))
     in
     let ind = Smartlocate.global_inductive_with_alias inductive in
     Dumpglob.add_glob ?loc:inductive.loc (IndRef ind);
-    DeclareScheme.declare_scheme local scheme_kind_s (ind,gr)
+    DeclareScheme.declare_scheme local (scheme_kind, Some UnivGen.QualityOrSet.qtype,false) (ind,gr)
 
 let vernac_library_attributes atts =
   if Global.is_curmod_library () && not (Lib.sections_are_opened ()) then
@@ -2786,10 +2788,6 @@ let translate_pure_vernac ?loc ~atts v = let open Vernactypes in match v with
   | VernacScheme l ->
     vtdefault(fun () ->
         vernac_scheme atts l)
-  | VernacSchemeEquality (sch,id) ->
-    vtdefault(fun () ->
-        unsupported_attributes atts;
-        vernac_scheme_equality sch id ~locmap:(Ind_tables.Locmap.default loc))
   | VernacCombinedScheme (id, l) ->
     vtdefault(fun () ->
         unsupported_attributes atts;

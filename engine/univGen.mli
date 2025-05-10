@@ -111,3 +111,12 @@ val fresh_sort_context_instance : sort_context_set ->
     See Evd.fresh_global, Evarutil.new_global, and pf_constr_of_global for
     the proper way to get a fresh copy of a polymorphic global reference. *)
 val constr_of_monomorphic_global : env -> GlobRef.t -> constr
+
+(* Map with key of type : string list * family option * bool 
+                           scheme name *  Type family  * mutual *)
+val compareT : (string list * QualityOrSet.t option * bool) -> (string list * QualityOrSet.t option * bool) -> int
+  
+module Set : CSet.ExtS with type elt = (string list * QualityOrSet.t option * bool)
+module Map : CMap.ExtS with type key = (string list * QualityOrSet.t option * bool) and module Set := Set
+
+val family_to_str : QualityOrSet.t -> string 

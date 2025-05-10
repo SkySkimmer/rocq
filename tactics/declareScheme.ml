@@ -14,8 +14,8 @@ let scheme_map = Summary.ref Indmap_env.empty ~name:"Schemes"
 
 let cache_one_scheme kind (ind,const) =
   scheme_map := Indmap_env.update ind (function
-      | None -> Some (CString.Map.singleton kind const)
-      | Some map -> Some (CString.Map.add kind const map))
+      | None -> Some (UnivGen.Map.singleton kind const)
+      | Some map -> Some (UnivGen.Map.add kind const map))
       !scheme_map
 
 let cache_scheme (kind,l) =
@@ -28,7 +28,7 @@ let subst_one_scheme subst (ind,const) =
 let subst_scheme (subst,(kind,l)) =
   (kind, subst_one_scheme subst l)
 
-let inScheme : Libobject.locality * (string * (inductive * Constant.t)) -> Libobject.obj =
+let inScheme : Libobject.locality * ((string list * UnivGen.QualityOrSet.t option * bool) * (inductive * Constant.t)) -> Libobject.obj =
   let open Libobject in
   declare_object @@ object_with_locality "SCHEME"
     ~cache:cache_scheme
@@ -38,6 +38,6 @@ let inScheme : Libobject.locality * (string * (inductive * Constant.t)) -> Libob
 let declare_scheme local kind indcl =
   Lib.add_leaf (inScheme (local,(kind,indcl)))
 
-let lookup_scheme kind ind = CString.Map.find kind (Indmap_env.find ind !scheme_map)
+let lookup_scheme kind ind = UnivGen.Map.find kind (Indmap_env.find ind !scheme_map)
 
 let all_schemes () = !scheme_map

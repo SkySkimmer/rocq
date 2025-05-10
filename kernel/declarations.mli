@@ -215,6 +215,7 @@ type one_inductive_body = {
     mind_squashed : squash_info option;
     (** Is elimination restricted to the inductive's sort? *)
 
+    (* rel_context ex : constructors S and zero for nat *)  
     mind_nf_lc : (rel_context * types) array;
  (** Head normalized constructor types so that their conclusion
      exposes the inductive type. It includes the parameters, i.e. each
