@@ -271,13 +271,13 @@ let name_and_process_scheme env = function
     (id, sch_type, smart_ind sch_qualid, sch_sort)
   | (None, {sch_type; sch_qualid; sch_sort}) ->
     let ind = smart_ind sch_qualid in
-    let sort_of_ind =
-      Indrec.pseudo_sort_quality_for_elim ind
-        (snd (Inductive.lookup_mind_specif env ind))
+    let suffix =
+      try Ind_tables.get_suff sch_type sch_sort
+      with Not_found -> (fun _ -> "default")
     in
-    let suffix = Ind_tables.get_suff sch_type (Some (UnivGen.QualityOrSet.Qual sort_of_ind)) in
     let (mind,one_ind) = Global.lookup_inductive ind in
-    let newid = Names.Id.of_string (suffix (Some one_ind)) in
+    let newid = Names.Id.of_string (suffix (Some one_ind))
+    in
     let newref = CAst.make newid in
     (newref,sch_type, ind, sch_sort)
 

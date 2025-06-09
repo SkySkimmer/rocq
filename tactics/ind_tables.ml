@@ -114,13 +114,11 @@ let get_suff sch_type sch_sort =
       | None -> Hashtbl.find scheme_object_table (sch_type,Some UnivGen.QualityOrSet.qtype,true)
       )
   with Not_found ->
-  (try
     fst (match sch_sort with
       | Some st -> Hashtbl.find scheme_object_table (sch_type,sch_sort,false)
       | None -> Hashtbl.find scheme_object_table (sch_type,Some UnivGen.QualityOrSet.qtype,false)
        )
-   with Not_found -> assert false) 
-  
+
 (**********************************************************************)
 (* Defining/retrieving schemes *)
 
