@@ -26,6 +26,7 @@ module Pltac =
 struct
 let ltac2_expr = Procq.Entry.make "ltac2_expr"
 let tac2expr_in_env = Procq.Entry.make "tac2expr_in_env"
+let ltac2_alt = Procq.Entry.make "ltac2_alt_expr"
 
 let q_ident = Procq.Entry.make "q_ident"
 let q_bindings = Procq.Entry.make "q_bindings"
@@ -641,6 +642,8 @@ let find_syntactic_class ?loc id =
   match Id.Map.find_opt id !syntax_class_table with
   | Some v -> v
   | None ->
+    if Id.to_string id = "alt" then interp_custom_entry_action ?loc id Pltac.ltac2_alt
+    else
     match Procq.find_custom_entry ltac2_custom_entry (name_of_custom_entry id) with
     | entry -> interp_custom_entry_action ?loc id entry
     | exception Not_found ->
@@ -778,6 +781,8 @@ let perform_notation syn st =
   let entry = match entry with
     | None -> Pltac.ltac2_expr
     | Some entry ->
+      if Id.to_string entry = "alt" then Pltac.ltac2_alt
+      else
       match Procq.find_custom_entry ltac2_custom_entry (name_of_custom_entry entry) with
       | entry -> entry
       | exception Not_found ->

@@ -85,6 +85,7 @@ val call_par : pstate:Declare.Proof.t -> with_end_tac:bool -> raw_tacexpr
 module Pltac :
 sig
 val ltac2_expr : raw_tacexpr Procq.Entry.t
+val ltac2_alt : raw_tacexpr Procq.Entry.t
 val tac2expr_in_env : (Id.t CAst.t list * raw_tacexpr) Procq.Entry.t
 
 (** Quoted entries. To be used for complex notations. *)

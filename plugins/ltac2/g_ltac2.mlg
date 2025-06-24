@@ -104,6 +104,8 @@ let test_leftsquarebracket_equal =
 
 let ltac2_expr = Tac2entries.Pltac.ltac2_expr
 let _ltac2_expr = ltac2_expr
+let ltac2_alt = Tac2entries.Pltac.ltac2_alt
+let _ltac2_alt = ltac2_alt
 let ltac2_type = Entry.make "ltac2_type"
 let tac2def_val = Entry.make "tac2def_val"
 let tac2def_typ = Entry.make "tac2def_typ"
@@ -111,6 +113,7 @@ let tac2def_ext = Entry.make "tac2def_ext"
 let tac2def_syn = Entry.make "tac2def_syn"
 let tac2def_mut = Entry.make "tac2def_mut"
 let tac2mode = Entry.make "ltac2_command"
+let tac2modealt = Entry.make "ltac2_alt_command"
 let ltac2_atom = Entry.make "ltac2_atom"
 
 let tac2expr_in_env = Tac2entries.Pltac.tac2expr_in_env
@@ -1007,6 +1010,11 @@ PRINTED BY { pr_ltac2expr }
 | [ _ltac2_expr(e) ] -> { e }
 END
 
+VERNAC ARGUMENT EXTEND ltac2_alt
+PRINTED BY { pr_ltac2expr }
+| [ _ltac2_alt(e) ] -> { e }
+END
+
 {
 
 let names_of_strexpr = function
@@ -1050,6 +1058,13 @@ let _ : Pvernac.proof_mode = Pvernac.register_proof_mode "Ltac2"
         tactic_expr_entry = ltac2_expr;
       })
 
+let _ : Pvernac.proof_mode = Pvernac.register_proof_mode "Ltac2Alt"
+    (ProofMode {
+        command_entry = tac2modealt;
+        wit_tactic_expr = Tac2env.wit_ltac2_tac;
+        tactic_expr_entry = ltac2_alt;
+      })
+
 open Vernacextend
 
 let toplevel_selector = G_vernac.toplevel_selector
@@ -1087,6 +1102,25 @@ END
 GRAMMAR EXTEND Gram
   GLOBAL: tac2mode;
   tac2mode: TOP
+    [ [ p = subprf -> { Vernacexpr.VernacSynPure p }
+      | g = OPT toplevel_selector; p = subprf_with_selector -> { Vernacexpr.VernacSynPure (p g) }
+      ] ];
+END
+
+VERNAC { tac2modealt } EXTEND VernacLtac2Alt
+| ![proof] [ ltac2_selector_opt(g) ltac2_alt(t) ltac2_use_default(with_end_tac) ] =>
+  { classify_as_proofstep } -> { fun ~pstate ->
+    Tac2entries.call ~pstate g ~with_end_tac t
+  }
+| ![proof] [ "par" ":" ltac2_alt(t) ltac2_use_default(with_end_tac) ] =>
+  { classify_as_proofstep } -> { fun ~pstate ->
+    Tac2entries.call_par ~pstate ~with_end_tac t
+  }
+END
+
+GRAMMAR EXTEND Gram
+  GLOBAL: tac2modealt;
+  tac2modealt: TOP
     [ [ p = subprf -> { Vernacexpr.VernacSynPure p }
       | g = OPT toplevel_selector; p = subprf_with_selector -> { Vernacexpr.VernacSynPure (p g) }
       ] ];
