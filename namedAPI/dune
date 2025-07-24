@@ -1,0 +1,5 @@
+(library
+ (name namedAPI)
+ (synopsis "Rocq API for working under binders")
+ (public_name rocq-runtime.namedAPI)
+ (libraries engine))
