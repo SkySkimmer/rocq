@@ -424,7 +424,9 @@ let rec extern_cases_pattern_in_scope ((custom,(lev_after:int option)),scopes as
                     else CPatCstr (c, Some (add_patt_for_params (fst cstrsp) args), [])
                   else
                     let full_args = add_patt_for_params (fst cstrsp) args in
-                    let tags = Inductiveops.constructor_alltags (Global.env()) cstrsp in
+                    let tags = try Inductiveops.constructor_alltags (Global.env()) cstrsp
+                      with _ when !Flags.in_debugger -> []
+                    in
                     match drop_implicits_in_patt (GlobRef.ConstructRef cstrsp) 0 ~tags full_args with
                       | Some true_args -> CPatCstr (c, None, true_args)
                       | None           -> CPatCstr (c, Some full_args, [])

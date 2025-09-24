@@ -283,6 +283,7 @@ let prqvar q = UnivNames.pr_quality_with_global_universes q
 let ppqvarset l = pp (hov 1 (str "{" ++ prlist_with_sep spc prqvar (QVar.Set.elements l) ++ str "}"))
 let ppuniverse_set l = pp (Level.Set.pr prlev l)
 let ppuniverse_instance l = pp (Instance.pr prqvar prlev l)
+let ppuniverse_einstance l = ppuniverse_instance (EConstr.Unsafe.to_instance l)
 let ppuniverse_context l = pp (pr_universe_context prqvar prlev l)
 let ppuniverse_context_set l = pp (ContextSet.pr prlev l)
 let ppuniverse_subst l = pp (UnivSubst.pr_universe_subst Level.raw_pr l)
