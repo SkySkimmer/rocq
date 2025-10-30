@@ -235,30 +235,6 @@ let fresh_sort_context_instance ((qs,us),csts) =
   in
   (qsubst, usubst), ((qs, us), csts)
 
-(** Map with key of type : string list * family option * bool 
-                           scheme name *  Type family  * mutual *)
-let compareT (l1,s1,b1) (l2,s2,b2) =
-    let listc = CList.compare Stdlib.compare l1 l2 in
-    if (listc == 0)
-    then match s1,s2 with
-      | None, None -> if b1 = b2 then 0 else 1
-      | Some _, None
-      | None, Some _ -> 1
-      | Some x, Some y ->
-        if x = y
-        then if b1 = b2 then 0 else 1
-        else 1
-    else listc
-
-module Self1 =
-struct
-  type t = string list * QualityOrSet.t option * bool
-  let compare = compareT
-end
-
-module Set = CSet.Make(Self1)
-module Map = CMap.Make(Self1)
-
 let family_to_str = function
   | QualityOrSet.Set -> "InSet"
   | Qual a -> begin match a with

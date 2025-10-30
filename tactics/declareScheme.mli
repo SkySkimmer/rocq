@@ -10,6 +10,17 @@
 
 open Names
 
-val declare_scheme : Libobject.locality -> (string list * UnivGen.QualityOrSet.t option * bool) -> (inductive * Constant.t) -> unit
+module Key : sig
+
+  type t = (string list * UnivGen.QualityOrSet.t option * bool)
+
+  val equal : t -> t -> bool
+
+  module Set : CSet.ExtS with type elt = t
+  module Map : CMap.ExtS with type key = t and module Set := Set
+end
+
+
+val declare_scheme : Libobject.locality -> Key.t -> (inductive * Constant.t) -> unit
 val lookup_scheme : (string list * UnivGen.QualityOrSet.t option * bool) -> inductive -> Constant.t
-val all_schemes : unit -> Constant.t UnivGen.Map.t Indmap_env.t
+val all_schemes : unit -> Constant.t Key.Map.t Indmap_env.t

@@ -20,6 +20,7 @@ open Declarations
 open Constr
 open Util
 
+module Key = DeclareScheme.Key
 
 (**********************************************************************)
 (* Registering schemes in the environment *)
@@ -33,9 +34,9 @@ type individual_scheme_object_function =
   Environ.env -> handle -> inductive -> bool -> constr Evd.in_ustate option
 
 (* scheme_name * sort * dep *)
-type 'a scheme_kind = (string list * UnivGen.QualityOrSet.t option * bool)
+type 'a scheme_kind = Key.t
 
-let pr_scheme_kind (kind : string list * UnivGen.QualityOrSet.t option * bool) = 
+let pr_scheme_kind (kind : Key.t) =
   let (str_list, opt_str,b) = kind in
   let pr_list = Pp.prlist Pp.str str_list in
   let pr_option = match opt_str with
@@ -163,12 +164,12 @@ let redeclare_schemes { sch_eff = eff } =
       let _ = DeclareScheme.lookup_scheme kind ind in
       accu
     with Not_found ->
-      let old = try UnivGen.Map.find kind accu with Not_found -> [] in
-      UnivGen.Map.add kind ((ind, c) :: old) accu
+      let old = try Key.Map.find kind accu with Not_found -> [] in
+      Key.Map.add kind ((ind, c) :: old) accu
   in
-  let schemes = Cmap_env.fold fold (Evd.seff_roles eff) UnivGen.Map.empty in
+  let schemes = Cmap_env.fold fold (Evd.seff_roles eff) Key.Map.empty in
   let iter kind defs = List.iter (DeclareScheme.declare_scheme SuperGlobal kind) defs in
-  UnivGen.Map.iter iter schemes
+  Key.Map.iter iter schemes
 
 let local_lookup_scheme eff kind ind = match lookup_scheme kind ind with
 | Some _ as ans -> ans
@@ -176,8 +177,7 @@ let local_lookup_scheme eff kind ind = match lookup_scheme kind ind with
   let exception Found of Constant.t in
   let iter c role = match role with
     | Evd.Schema (i, k) ->
-      let tmp = if (UnivGen.compareT k kind == 0) then true else false in
-      if tmp && Ind.UserOrd.equal i ind then raise (Found c)
+      if Key.equal k kind && Ind.UserOrd.equal i ind then raise (Found c)
   in
   (* Inefficient O(n), but the number of locally declared schemes is small and
      this is very rarely called *)

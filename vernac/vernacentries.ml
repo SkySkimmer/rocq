@@ -361,7 +361,7 @@ let print_registered_schemes () =
     pr_global (ConstRef c) ++ str " registered as " ++ str kind ++ str " for " ++ pr_global (IndRef ind)
   in
   let pr_schemes_of_ind (ind, schemes) =
-    let tmp = UnivGen.Map.bindings schemes in
+    let tmp = DeclareScheme.Key.Map.bindings schemes in
     let tmpp = List.map (fun ((a,c,d),b) ->
         (* /!\ will print 2 times if both individual and mutual (represented by bool d here) are defined for a given scheme *)
         let s1 = String.concat " " a in
