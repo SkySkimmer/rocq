@@ -1944,14 +1944,6 @@ let () =
   declare_bool_option
     { optstage = Summary.Stage.Interp;
       optdepr  = None;
-      optkey   = ["Printing";"Implicit"];
-      optread  = (fun () -> !Constrextern.print_implicits);
-      optwrite = (fun b ->  Constrextern.print_implicits := b) }
-
-let () =
-  declare_bool_option
-    { optstage = Summary.Stage.Interp;
-      optdepr  = None;
       optkey   = ["Printing";"Implicit";"Defensive"];
       optread  = (fun () -> !Constrextern.print_implicits_defensive);
       optwrite = (fun b ->  Constrextern.print_implicits_defensive := b) }

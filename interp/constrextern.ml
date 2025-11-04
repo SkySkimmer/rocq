@@ -37,13 +37,6 @@ module NamedDecl = Context.Named.Declaration
 (**********************************************************************)
 (* Parametrization                                                    *)
 
-(* This governs printing of implicit arguments.  When
-   [print_implicits] is on then [print_implicits_explicit_args] tells
-   how implicit args are printed. If on, implicit args are printed
-   with the form (id:=arg) otherwise arguments are printed normally and
-   the function is prefixed by "@" *)
-let print_implicits = ref false
-
 (* Tells if implicit arguments not known to be inferable from a rigid
    position are systematically printed *)
 let print_implicits_defensive = ref true
@@ -261,7 +254,7 @@ let drop_implicits_in_patt cst nb_expl ?(tags=[]) args =
   in
   let try_impls_fit (imps,args,tags) =
     if not !Constrintern.parsing_explicit &&
-       ((!PrintingFlags.raw_print || !print_implicits) &&
+       ((!PrintingFlags.raw_print || !PrintingFlags.print_implicits) &&
         List.exists is_status_implicit imps)
        (* Note: !print_implicits_explicit_args=true not supported for patterns *)
     then None
@@ -335,7 +328,7 @@ let pattern_printable_in_both_syntax (ind,_ as c) =
   List.exists (fun (_,impls) ->
     (List.length impls >= nb_params) &&
       let params,args = Util.List.chop nb_params impls in
-      not !PrintingFlags.raw_print && not !print_implicits &&
+      not !PrintingFlags.raw_print && not !PrintingFlags.print_implicits &&
       (List.for_all is_status_implicit params)&&(List.for_all (fun x -> not (is_status_implicit x)) args)
   ) impl_st
 
@@ -586,7 +579,7 @@ let adjust_implicit_arguments inctx n args impl =
         let tail = exprec (args,impl) in
         let visible =
           !PrintingFlags.raw_print ||
-          (!print_implicits && PrintingFlags.print_implicits_explicit_args()) ||
+          (!PrintingFlags.print_implicits && PrintingFlags.print_implicits_explicit_args()) ||
           (is_needed_for_correct_partial_application tail imp) ||
           (!print_implicits_defensive &&
            (not (is_inferable_implicit inctx n imp) || !Flags.beautify) &&
@@ -673,7 +666,7 @@ let extern_applied_ref inctx impl (cf,f) us args =
   try
     if not !Constrintern.parsing_explicit &&
        ((!PrintingFlags.raw_print ||
-         (!print_implicits && not (PrintingFlags.print_implicits_explicit_args()))) &&
+         (!PrintingFlags.print_implicits && not (PrintingFlags.print_implicits_explicit_args()))) &&
         List.exists is_status_implicit impl)
     then raise Expl;
     let impl = if !Constrintern.parsing_explicit then [] else impl in

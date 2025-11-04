@@ -36,3 +36,6 @@ let print_parentheses = make_flag ["Printing";"Parentheses"] false
 (* constant for now, TODO expose as a new option *)
 (* extern *)
 let print_implicits_explicit_args () = false
+
+(* extern *)
+let print_implicits = make_flag ["Printing";"Implicit"] false

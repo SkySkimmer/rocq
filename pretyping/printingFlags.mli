@@ -22,3 +22,5 @@ val print_parentheses : bool ref
     printed with the form (id:=arg) otherwise arguments are printed
     normally and the function is prefixed by "@". *)
 val print_implicits_explicit_args : unit -> bool
+
+val print_implicits : bool ref
