@@ -37,10 +37,6 @@ module NamedDecl = Context.Named.Declaration
 (**********************************************************************)
 (* Parametrization                                                    *)
 
-(* Tells if implicit arguments not known to be inferable from a rigid
-   position are systematically printed *)
-let print_implicits_defensive = ref true
-
 (* This suppresses printing of notations *)
 let print_no_symbol = ref false
 
@@ -581,7 +577,7 @@ let adjust_implicit_arguments inctx n args impl =
           !PrintingFlags.raw_print ||
           (!PrintingFlags.print_implicits && PrintingFlags.print_implicits_explicit_args()) ||
           (is_needed_for_correct_partial_application tail imp) ||
-          (!print_implicits_defensive &&
+          (!PrintingFlags.print_implicits_defensive &&
            (not (is_inferable_implicit inctx n imp) || !Flags.beautify) &&
            is_significant_implicit (Lazy.force a))
         in

@@ -55,7 +55,6 @@ val extern_rel_context : env -> Evd.evar_map ->
   rel_context -> local_binder_expr list
 
 (** Printing options *)
-val print_implicits_defensive : bool ref
 val print_no_symbol : bool ref
 val print_projections : bool ref
 val print_raw_literal : bool ref

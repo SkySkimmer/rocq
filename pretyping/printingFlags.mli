@@ -24,3 +24,7 @@ val print_parentheses : bool ref
 val print_implicits_explicit_args : unit -> bool
 
 val print_implicits : bool ref
+
+(** Tells if implicit arguments not known to be inferable from a rigid
+    position are systematically printed *)
+val print_implicits_defensive : bool ref

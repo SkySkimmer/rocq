@@ -39,3 +39,6 @@ let print_implicits_explicit_args () = false
 
 (* extern *)
 let print_implicits = make_flag ["Printing";"Implicit"] false
+
+(* extern *)
+let print_implicits_defensive = make_flag ["Printing";"Implicit";"Defensive"] true
