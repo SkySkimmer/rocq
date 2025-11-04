@@ -35,6 +35,9 @@ let { Goptions.get = print_sort_quality } =
     ~value:true
     ()
 
+(* detyping *)
+let print_evar_arguments = make_flag ["Printing";"Existential";"Instances"] false
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 

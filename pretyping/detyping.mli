@@ -21,9 +21,6 @@ type _ delay =
 | Now : 'a delay
 | Later : [ `thunk ] delay
 
-(** If true, prints full local context of evars *)
-val print_evar_arguments : bool ref
-
 (** If true, contract branches with same r.h.s. and same matching
     variables in a disjunctive pattern *)
 val print_factorize_match_patterns : unit -> bool

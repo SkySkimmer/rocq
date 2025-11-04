@@ -205,18 +205,6 @@ type _ delay =
 | Now : 'a delay
 | Later : [ `thunk ] delay
 
-(** If true, prints local context of evars, whatever print_arguments *)
-let print_evar_arguments = ref false
-
-let () =
-  let open Goptions in
-  declare_bool_option
-    { optstage = Summary.Stage.Interp;
-      optdepr  = None;
-      optkey   = ["Printing";"Existential";"Instances"];
-      optread  = (fun () -> !print_evar_arguments);
-      optwrite = (:=) print_evar_arguments }
-
 let add_name decl (nenv, env) =
   add_name (get_name decl) nenv, push_rel decl env
 
@@ -974,7 +962,7 @@ and detype_r d flags avoid env sigma t =
               l
           in
           let l = get_instance (fun d c ->
-              not !print_evar_arguments
+              not !PrintingFlags.print_evar_arguments
               && bound_to_itself_or_letin d c
               && not (match EConstr.kind sigma c with
                   | Rel n -> Int.Set.mem n rels
