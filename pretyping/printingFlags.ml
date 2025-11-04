@@ -80,6 +80,13 @@ let { Goptions.get = print_unfolded_primproj_asmatch } =
     ~value:false
     ()
 
+(* detyping *)
+let { Goptions.get = print_match_paramunivs } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Match";"All";"Subterms"]
+    ~value:false
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 

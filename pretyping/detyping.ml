@@ -287,12 +287,6 @@ module PrintingCasesLet =
 module PrintingIf  = Goptions.MakeRefTable(PrintingCasesIf)
 module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
-let { Goptions.get = print_match_paramunivs } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Match";"All";"Subterms"]
-    ~value:false
-    ()
-
 let { Goptions.get = print_relevances } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Relevance";"Marks"]
@@ -612,7 +606,7 @@ let detype_case computable detype detype_eqns avoid env sigma (ci, univs, params
   let synth_type = PrintingFlags.synthetize_type () in
   let tomatch = detype c in
   let tomatch =
-    if not (print_match_paramunivs ()) then tomatch
+    if not (PrintingFlags.print_match_paramunivs ()) then tomatch
     else match iv with
       | NoInvert ->
         if Array.is_empty params && EInstance.is_empty univs
