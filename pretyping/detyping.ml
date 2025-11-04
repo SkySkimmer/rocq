@@ -287,12 +287,6 @@ module PrintingCasesLet =
 module PrintingIf  = Goptions.MakeRefTable(PrintingCasesIf)
 module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
-let { Goptions.get = reverse_matching } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Matching"]
-    ~value:true
-    ()
-
 let { Goptions.get = print_primproj_params } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Primitive";"Projection";"Parameters"]
@@ -982,7 +976,7 @@ and detype_r d flags avoid env sigma t =
 
 and detype_eqns d flags avoid env sigma computable constructs bl =
   try
-    if !PrintingFlags.raw_print || not (reverse_matching ()) then raise_notrace Exit;
+    if !PrintingFlags.raw_print || not (PrintingFlags.print_matching ()) then raise_notrace Exit;
     let mat = build_tree Anonymous flags (avoid,env) sigma bl in
     List.map (fun (ids,pat,((avoid,env),c)) ->
         CAst.make (Id.Set.elements ids,[pat],detype d flags avoid env sigma c))

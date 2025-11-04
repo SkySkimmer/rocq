@@ -59,6 +59,13 @@ let { Goptions.get = synthetize_type } =
     ~value:true
     ()
 
+(* detyping *)
+let { Goptions.get = print_matching } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Matching"]
+    ~value:true
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 
