@@ -47,9 +47,6 @@ val in_ml_toplevel : bool ref
 (* Used to check stages are used correctly. *)
 val in_synterp_phase : bool option ref
 
-(* Set Printing All flag. For some reason it is a global flag *)
-val raw_print : bool ref
-
 (* Beautify command line flags, should move to printing? *)
 val beautify : bool ref
 val beautify_file : bool ref

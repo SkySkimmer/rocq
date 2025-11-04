@@ -485,7 +485,7 @@ let { Goptions.get = print_allow_match_default_clause } =
 
 let rec join_eqns (ids,rhs as x) patll = function
   | ({CAst.loc; v=(ids',patl',rhs')} as eqn')::rest ->
-     if not !Flags.raw_print && print_factorize_match_patterns () &&
+     if not !PrintingFlags.raw_print && print_factorize_match_patterns () &&
         List.eq_set Id.equal ids ids' && glob_constr_eq rhs rhs'
      then
        join_eqns x (patl'::patll) rest
@@ -531,7 +531,7 @@ let factorize_eqns eqns =
   let eqns = aux [] (List.rev eqns) in
   let mk_anon patl = List.map (fun _ -> DAst.make @@ PatVar Anonymous) patl in
   let open CAst in
-  if not !Flags.raw_print && print_allow_match_default_clause () && eqns <> [] then
+  if not !PrintingFlags.raw_print && print_allow_match_default_clause () && eqns <> [] then
     match select_default_clause eqns with
     (* At least two clauses and the last one is disjunctive with no variables *)
     | Some {loc=gloc;v=([],patl::_::_,rhs)}, (_::_ as eqns) ->
@@ -691,7 +691,7 @@ let detype_case computable detype detype_eqns avoid env sigma (ci, univs, params
         DAst.make @@ GCast (tomatch, None, detype t)
   in
   let alias, aliastyp, pred =
-    if (not !Flags.raw_print) && synth_type && computable && not (Int.equal (Array.length bl) 0)
+    if (not !PrintingFlags.raw_print) && synth_type && computable && not (Int.equal (Array.length bl) 0)
     then
       Anonymous, None, None
     else
@@ -711,7 +711,7 @@ let detype_case computable detype detype_eqns avoid env sigma (ci, univs, params
   let constructs = Array.init (Array.length bl) (fun i -> (ci.ci_ind,i+1)) in
   let tag = let st = ci.ci_pp_info.style in
     try
-      if !Flags.raw_print then
+      if !PrintingFlags.raw_print then
         RegularStyle
       else if st == LetPatternStyle then
         st
@@ -1024,7 +1024,7 @@ and detype_r d flags avoid env sigma t =
 
 and detype_eqns d flags avoid env sigma computable constructs bl =
   try
-    if !Flags.raw_print || not (reverse_matching ()) then raise_notrace Exit;
+    if !PrintingFlags.raw_print || not (reverse_matching ()) then raise_notrace Exit;
     let mat = build_tree Anonymous flags (avoid,env) sigma bl in
     List.map (fun (ids,pat,((avoid,env),c)) ->
         CAst.make (Id.Set.elements ids,[pat],detype d flags avoid env sigma c))
@@ -1086,7 +1086,7 @@ and detype_binder d flags bk avoid env sigma decl c =
           try Retyping.get_sort_quality_of (snd env) sigma ty
           with Retyping.RetypeError _ -> UnivGen.QualityOrSet.qtype
       in
-      let t = if not (UnivGen.QualityOrSet.is_prop s) && not !Flags.raw_print
+      let t = if not (UnivGen.QualityOrSet.is_prop s) && not !PrintingFlags.raw_print
               then None
               else Some (detype d (nongoal flags) avoid env sigma ty) in
       GLetIn (na', rinfo, c, t, r)

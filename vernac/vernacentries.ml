@@ -1997,14 +1997,6 @@ let () =
       optwrite = (fun b ->  Constrextern.print_raw_literal := b) }
 
 let () =
-  declare_bool_option
-    { optstage = Summary.Stage.Interp;
-      optdepr  = None;
-      optkey   = ["Printing";"All"];
-      optread  = (fun () -> !Flags.raw_print);
-      optwrite = (fun b -> Flags.raw_print := b) }
-
-let () =
   declare_int_option
     { optstage = Summary.Stage.Interp;
       optdepr  = None;

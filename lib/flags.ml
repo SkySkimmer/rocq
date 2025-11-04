@@ -48,8 +48,6 @@ let xml_debug = ref false
 let in_debugger = ref false
 let in_ml_toplevel = ref false
 
-let raw_print = ref false
-
 let in_synterp_phase = ref None
 
 (* Translate *)
