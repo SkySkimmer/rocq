@@ -93,7 +93,7 @@ let prec_of_prim_token = function
 
 let adjust_level side lev_after l_not prec =
   match side with
-  | Some _ when !Constrextern.print_parentheses -> no_after, LevelLe 0
+  | Some _ when !PrintingFlags.print_parentheses -> no_after, LevelLe 0
   | Some Right ->
     (if Notation.may_capture_cont_after lev_after prec then no_after else lev_after), prec
   | Some Left -> Some l_not, prec

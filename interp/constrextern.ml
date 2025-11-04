@@ -49,10 +49,6 @@ let print_implicits_explicit_args = ref false
    position are systematically printed *)
 let print_implicits_defensive = ref true
 
-(* This forces printing of parentheses even when
-   it is implied by associativity/precedence *)
-let print_parentheses = ref false
-
 (* This suppresses printing of notations *)
 let print_no_symbol = ref false
 
@@ -218,7 +214,7 @@ let overlap_right_left {notation_entry = entry} lev_after ((typs,_):Notation_ter
 
 let update_with_subscope from_entry (entry,(scopt,scl)) lev_after closed scopes =
   let {notation_subentry = entry; notation_relative_level = lev; notation_position = side} = entry in
-  let lev = if !print_parentheses && side <> None then LevelLe 0 (* min level *) else lev in
+  let lev = if !PrintingFlags.print_parentheses && side <> None then LevelLe 0 (* min level *) else lev in
   let lev_after =
     match side with
     | Some Left -> Some from_entry.notation_level
@@ -1332,7 +1328,7 @@ and extern_notation depth inctx ((custom,(lev_after: int option)),scopes as alls
           | AppBoundedNotation _ -> raise No_match in
         (* Try matching ... *)
         let terms,termlists,binders,binderlists =
-          match_notation_constr ~print_parentheses:!print_parentheses t ~vars:eenv.vars pat
+          match_notation_constr ~print_parentheses:!PrintingFlags.print_parentheses t ~vars:eenv.vars pat
         in
         let lev_after = if List.is_empty args then lev_after else Some Notation.app_level in
         (* Try externing extra args... *)

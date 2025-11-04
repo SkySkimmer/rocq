@@ -29,3 +29,6 @@ let print_universes = make_flag ["Printing";"Universes"] false
 
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
+
+(* extern + ppconstr *)
+let print_parentheses = make_flag ["Printing";"Parentheses"] false

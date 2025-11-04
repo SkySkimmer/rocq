@@ -14,3 +14,5 @@ val raw_print : bool ref
 val print_universes : bool ref
 
 val print_coercions : bool ref
+
+val print_parentheses : bool ref
