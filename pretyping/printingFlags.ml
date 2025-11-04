@@ -152,3 +152,10 @@ let { Goptions.get = get_record_print } =
     ~key:["Printing";"Records"]
     ~value:true
     ()
+
+(* extern *)
+let { Goptions.get = print_float } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Float"]
+    ~value:true
+    ()

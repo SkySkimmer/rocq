@@ -802,15 +802,9 @@ let bigint_of_rocqpos_neg_int63 c = match TokenValue.kind c with
 | TConstruct ((_, 2), [c']) (* Neg *) -> Z.neg (bigint_of_int63 c')
 | _ -> raise NotAValidPrimToken
 
-let { Goptions.get = get_printing_float } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Float"]
-    ~value:true
-    ()
-
 let uninterp_float64 c = match TokenValue.kind c with
 | TFloat f when not (Float64.is_infinity f || Float64.is_neg_infinity f
-                    || Float64.is_nan f) && get_printing_float () ->
+                    || Float64.is_nan f) && PrintingFlags.print_float () ->
   NumTok.Signed.of_string (Float64.to_string f)
 | _ -> raise NotAValidPrimToken
 

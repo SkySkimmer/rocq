@@ -72,3 +72,5 @@ val print_raw_literal : bool ref
 val print_use_implicit_types : unit -> bool
 
 val get_record_print : unit -> bool
+
+val print_float : unit -> bool
