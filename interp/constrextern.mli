@@ -54,9 +54,6 @@ val extern_sort : Evd.evar_map -> Sorts.t -> sort_expr
 val extern_rel_context : env -> Evd.evar_map ->
   rel_context -> local_binder_expr list
 
-(** Printing options *)
-val print_raw_literal : bool ref
-
 (** Customization of the global_reference printer *)
 val set_extern_reference :
   (?loc:Loc.t -> Id.Set.t -> GlobRef.t -> qualid) -> unit

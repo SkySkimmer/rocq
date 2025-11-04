@@ -58,3 +58,6 @@ let () =
       optread  = (fun () -> not !print_no_symbol);
       optwrite = (fun b ->  print_no_symbol := not b);
     }
+
+(* extern *)
+let print_raw_literal = make_flag ["Printing";"Raw";"Literals"] false

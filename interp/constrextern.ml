@@ -44,9 +44,6 @@ let { Goptions.get = print_use_implicit_types } =
     ~value:true
     ()
 
-(* Print primitive tokens, like strings *)
-let print_raw_literal = ref false
-
 (**********************************************************************)
 
 let hole = CAst.make @@ CHole (None)
@@ -356,7 +353,7 @@ let extern_record_pattern cstrsp args =
 (* Better to use extern_glob_constr composed with injection/retraction ?? *)
 let rec extern_cases_pattern_in_scope ((custom,(lev_after:int option)),scopes as allscopes) vars pat =
   try
-    if !Flags.in_debugger || !PrintingFlags.raw_print || !print_raw_literal then raise No_match;
+    if !Flags.in_debugger || !PrintingFlags.raw_print || !PrintingFlags.print_raw_literal then raise No_match;
     let (na,p,key) = uninterp_prim_token_cases_pattern pat scopes in
     match availability_of_entry_coercion custom constr_lowest_level with
       | None -> raise No_match
@@ -775,7 +772,7 @@ let same_binder_type ty nal c =
 (* one with no delimiter if possible)                                 *)
 
 let extern_possible_prim_token ((custom,_),scopes) r =
-   if !print_raw_literal then raise No_match;
+   if !PrintingFlags.print_raw_literal then raise No_match;
    let (n,key) = uninterp_prim_token r scopes in
    match availability_of_entry_coercion custom constr_lowest_level with
    | None -> raise No_match

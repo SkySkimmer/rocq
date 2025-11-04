@@ -1941,14 +1941,6 @@ let () =
       optwrite = Impargs.make_maximal_implicit_args }
 
 let () =
-  declare_bool_option
-    { optstage = Summary.Stage.Interp;
-      optdepr  = None;
-      optkey   = ["Printing";"Raw";"Literals"];
-      optread  = (fun () -> !Constrextern.print_raw_literal);
-      optwrite = (fun b ->  Constrextern.print_raw_literal := b) }
-
-let () =
   declare_int_option
     { optstage = Summary.Stage.Interp;
       optdepr  = None;

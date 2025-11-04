@@ -34,3 +34,6 @@ val print_projections : bool ref
 
 (** Negated version of Printing Notations (negated for convenience in Himsg.explicit_flags)  *)
 val print_no_symbol : bool ref
+
+(** Print primitive tokens, like strings *)
+val print_raw_literal : bool ref
