@@ -287,12 +287,6 @@ module PrintingCasesLet =
 module PrintingIf  = Goptions.MakeRefTable(PrintingCasesIf)
 module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
-let { Goptions.get = print_relevances } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Relevance";"Marks"]
-    ~value:false
-    ()
-
 (** univ and sort detyping *)
 
 let detype_level_name sigma l =
@@ -338,7 +332,7 @@ let detype_sort sigma = function
     else glob_Type_sort
 
 let detype_relevance_info sigma na =
-  if not (print_relevances ()) then None
+  if not (PrintingFlags.print_relevances ()) then None
   else match ERelevance.kind sigma na.binder_relevance with
     | Relevant -> Some GRelevant
     | Irrelevant -> Some GIrrelevant

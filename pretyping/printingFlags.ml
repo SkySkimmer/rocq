@@ -87,6 +87,13 @@ let { Goptions.get = print_match_paramunivs } =
     ~value:false
     ()
 
+(* detyping *)
+let { Goptions.get = print_relevances } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Relevance";"Marks"]
+    ~value:false
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 
