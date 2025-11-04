@@ -81,39 +81,37 @@ let find_reference sl s =
 let eq = lazy (EConstr.of_constr (rocq_constant "core.eq.type"))
 let refl_equal = lazy (EConstr.of_constr (rocq_constant "core.eq.refl"))
 
-let with_full_print f a =
+let without_implicit_declarations f () =
   let old_implicit_args = Impargs.is_implicit_args ()
   and old_strict_implicit_args = Impargs.is_strict_implicit_args ()
   and old_contextual_implicit_args = Impargs.is_contextual_implicit_args () in
-  let old_rawprint = !PrintingFlags.raw_print in
-  let old_printuniverses = !PrintingFlags.print_universes in
-  let old_printallowmatchdefaultclause = !PrintingFlags.print_allow_match_default_clause in
-  PrintingFlags.print_universes := true;
-  PrintingFlags.print_allow_match_default_clause := false;
-  PrintingFlags.raw_print := true;
+  let reset () =
+    Impargs.make_implicit_args old_implicit_args;
+    Impargs.make_strict_implicit_args old_strict_implicit_args;
+    Impargs.make_contextual_implicit_args old_contextual_implicit_args;
+    Dumpglob.pop_output()
+  in
   Impargs.make_implicit_args false;
   Impargs.make_strict_implicit_args false;
   Impargs.make_contextual_implicit_args false;
-  Dumpglob.pause ();
-  try
-    let res = f a in
-    Impargs.make_implicit_args old_implicit_args;
-    Impargs.make_strict_implicit_args old_strict_implicit_args;
-    Impargs.make_contextual_implicit_args old_contextual_implicit_args;
-    PrintingFlags.raw_print := old_rawprint;
-    PrintingFlags.print_universes := old_printuniverses;
-    PrintingFlags.print_allow_match_default_clause := old_printallowmatchdefaultclause;
-    Dumpglob.pop_output ();
-    res
-  with reraise ->
-    Impargs.make_implicit_args old_implicit_args;
-    Impargs.make_strict_implicit_args old_strict_implicit_args;
-    Impargs.make_contextual_implicit_args old_contextual_implicit_args;
-    PrintingFlags.raw_print := old_rawprint;
-    PrintingFlags.print_universes := old_printuniverses;
-    PrintingFlags.print_allow_match_default_clause := old_printallowmatchdefaultclause;
-    Dumpglob.pop_output ();
-    raise reraise
+  Dumpglob.pause();
+  Util.try_finally f () reset ()
+
+let full_detype_flags () =
+  let flags = PrintingFlags.Detype.current() in
+  { flags with raw = true; universes = true; }
+
+let full_extern_flags () =
+  let flags = PrintingFlags.Extern.current() in
+  { flags with raw = true; factorize_eqns = {
+        flags.factorize_eqns with
+        allow_match_default_clause = false } }
+
+let extern_env_full_printing () =
+  Constrextern.empty_extern_env ~flags:(full_extern_flags())
+
+let full_printing_flags () =
+  { PrintingFlags.Combined.detype = full_detype_flags(); extern = full_extern_flags() }
 
 (**********************)
 

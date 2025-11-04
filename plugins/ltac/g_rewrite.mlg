@@ -235,7 +235,7 @@ let wit_binders =
 let binders = Procq.create_generic_entry2 "binders" (Genarg.rawwit wit_binders)
 
 let () =
-  let raw_printer l = Genprint.PrinterBasic (fun env sigma -> Pp.pr_non_empty_arg (Ppconstr.pr_binders env sigma) l) in
+  let raw_printer l = Genprint.PrinterBasic (fun env sigma -> Pp.pr_non_empty_arg Ppconstr.(pr_binders ~flags:(current_flags()) env sigma) l) in
   Genprint.register_vernac_print0 wit_binders raw_printer
 
 }

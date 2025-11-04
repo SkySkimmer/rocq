@@ -800,12 +800,12 @@ let rec find_uninterpretation need_delim def find = function
   | LonelyNotationItem ntn::scopes ->
       find_uninterpretation (ntn::need_delim) def find scopes
 
-let uninterp_prim_token c local_scopes =
+let uninterp_prim_token ~print_float c local_scopes =
   match glob_prim_constr_key c with
   | None -> raise Notation_ops.No_match
   | Some r ->
      let uninterp (sc,(info,_)) =
-       match PrimNotations.do_uninterp info c with
+       match PrimNotations.do_uninterp ~print_float info c with
        | None -> None
        | Some n -> Some (sc,n)
      in
@@ -832,10 +832,10 @@ let uninterp_prim_token c local_scopes =
      try find_uninterpretation [] l find scopes
      with Not_found -> match l with (_,n,k)::_ -> n,k | [] -> raise Notation_ops.No_match
 
-let uninterp_prim_token_cases_pattern c local_scopes =
+let uninterp_prim_token_cases_pattern ~print_float c local_scopes =
   match glob_constr_of_closed_cases_pattern (Global.env()) c with
   | exception Not_found -> raise Notation_ops.No_match
-  | na,c -> let (sc,n) = uninterp_prim_token c local_scopes in (na,sc,n)
+  | na,c -> let (sc,n) = uninterp_prim_token ~print_float c local_scopes in (na,sc,n)
 
 (* Miscellaneous *)
 

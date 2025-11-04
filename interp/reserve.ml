@@ -114,13 +114,14 @@ let constr_key env evd c =
 let revert_reserved_type env evd t =
   try
     let reserved = KeyMap.find (constr_key env evd t) !reserve_revtable in
-    let t = Detyping.detype Detyping.Now env evd t in
+    let t = Detyping.detype Detyping.Now ~flags:(PrintingFlags.Detype.current()) env evd t in
+    let factorize_eqns = PrintingFlags.Extern.FactorizeEqns.current() in
     (* pedrot: if [Notation_ops.match_notation_constr] may raise [Failure _]
         then I've introduced a bug... *)
     let filter _ pat =
       try
         let _ : _ * _ * _ * _ =
-          match_notation_constr ~print_parentheses:true t ~vars:Id.Set.empty ([], pat)
+          match_notation_constr ~print_parentheses:true ~factorize_eqns t ~vars:Id.Set.empty ([], pat)
         in
         true
       with No_match -> false

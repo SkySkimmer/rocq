@@ -246,26 +246,31 @@ let make_goal env sigma g =
   let ty  = Evd.evar_concl evi in
   { ty; env; sigma }
 
-let pr_letype_env ?goal_concl_style env sigma ?impargs t =
-  Ppconstr.pr_lconstr_expr env sigma
-    (Constrextern.extern_type ?goal_concl_style env sigma ?impargs t)
+let pr_letype_env ?goal_concl_style ~flags env sigma ?impargs t =
+  let ppflags = Ppconstr.of_combined_flags flags in
+  Ppconstr.pr_lconstr_expr ~flags:ppflags env sigma
+    (Constrextern.extern_type ~flags ?goal_concl_style env sigma ?impargs t)
 
-let pp_of_type env sigma ty =
-  pr_letype_env ~goal_concl_style:true env sigma ty
+let pp_of_type ~flags env sigma ty =
+  pr_letype_env ~goal_concl_style:true ~flags env sigma ty
 
-let pr_leconstr_env ?inctx ?scope env sigma t =
-  Ppconstr.pr_lconstr_expr env sigma (Constrextern.extern_constr ?inctx ?scope env sigma t)
+let pr_leconstr_env ?inctx ?scope ~flags env sigma t =
+  let ppflags = Ppconstr.of_combined_flags flags in
+  Ppconstr.pr_lconstr_expr ~flags:ppflags env sigma
+    (Constrextern.extern_constr ?inctx ?scope ~flags env sigma t)
 
-let pr_econstr_env ?inctx ?scope env sigma t =
-  Ppconstr.pr_constr_expr env sigma (Constrextern.extern_constr ?inctx ?scope env sigma t)
+let pr_econstr_env ?inctx ?scope ~flags env sigma t =
+  let ppflags = Ppconstr.of_combined_flags flags in
+  Ppconstr.pr_constr_expr ~flags:ppflags env sigma
+    (Constrextern.extern_constr ?inctx ?scope ~flags env sigma t)
 
-let diff_concl ?og_s ng =
+let diff_concl ?og_s ~flags ng =
   let o_concl_pp = match og_s with
-  | Some { ty = oty; env = oenv; sigma = osigma } -> pp_of_type oenv osigma oty
+  | Some { ty = oty; env = oenv; sigma = osigma } -> pp_of_type ~flags oenv osigma oty
   | None -> Pp.mt()
   in
   let { ty = nty; env = nenv; sigma = nsigma } = ng in
-  let n_concl_pp = pp_of_type nenv nsigma nty in
+  let n_concl_pp = pp_of_type ~flags nenv nsigma nty in
 
   let show_removed = Some (show_removed ()) in
 
@@ -288,7 +293,7 @@ map will contain:
 
 concl_pp is the conclusion as a Pp.t
 *)
-let goal_info goal =
+let goal_info ~flags goal =
   let map = ref CString.Map.empty in
   let line_idents = ref [] in
   let build_hyp_info env sigma hyp =
@@ -299,11 +304,11 @@ let goal_info goal =
     line_idents := idents :: !line_idents;
     let mid = match body with
     | Some c ->
-      let pb = pr_leconstr_env env sigma c in
+      let pb = pr_leconstr_env ~flags env sigma c in
       let pb = if EConstr.isCast sigma c then surround pb else pb in
       str " := " ++ pb
     | None -> mt() in
-    let ts = pp_of_type env sigma ty in
+    let ts = pp_of_type ~flags env sigma ty in
     let rhs_pp = mid ++ str " : " ++ ts in
 
     let make_entry () = { idents; rhs_pp } in
@@ -315,7 +320,7 @@ let goal_info goal =
     (* compaction is usually desired [eg for better display] *)
     let hyps = Termops.compact_named_context sigma (EConstr.named_context env) in
     let () = List.iter (build_hyp_info env sigma) (List.rev hyps) in
-    let concl_pp = pp_of_type env sigma ty in
+    let concl_pp = pp_of_type ~flags env sigma ty in
     ( List.rev !line_idents, !map, concl_pp )
   with e when CErrors.noncritical e -> ([], !map, Pp.mt ())
 
@@ -329,13 +334,13 @@ let diff_goal_info ~short o_info n_info =
     if short then [] else diff_hyps o_idents_in_lines o_hyp_map n_idents_in_lines n_hyp_map in
   (hyp_diffs_list, concl_pp)
 
-let unwrap g_s =
+let unwrap ~flags g_s =
   match g_s with
-  | Some g_s -> goal_info g_s
+  | Some g_s -> goal_info ~flags g_s
   | None -> ([], CString.Map.empty, Pp.mt ())
 
-let diff_goal ?(short=false) ?og_s ng =
-  diff_goal_info ~short (unwrap og_s) (goal_info ng)
+let diff_goal ?(short=false) ?og_s ~flags ng =
+  diff_goal_info ~short (unwrap ~flags og_s) (goal_info ~flags ng)
 
 (*** Code to determine which calls to compare between the old and new proofs ***)
 
@@ -414,11 +419,11 @@ let make_goal_map op np =
 let notify_proof_diff_failure msg =
   Feedback.msg_notice Pp.(str "Unable to compute diffs: " ++ str msg)
 
-let diff_proofs ~diff_opt ?old proof =
+let diff_proofs ~diff_opt ?old ~flags proof =
   let pp_proof p =
     let sigma, env = Proof.get_proof_context p in
     let pprf = Proof.partial_proof p in
-    Pp.prlist_with_sep Pp.fnl (pr_econstr_env env sigma) pprf in
+    Pp.prlist_with_sep Pp.fnl (pr_econstr_env ~flags env sigma) pprf in
   match diff_opt with
   | DiffOff -> pp_proof proof
   | _ -> begin

@@ -16,6 +16,12 @@ open Libnames
 open Constrexpr
 open Names
 
+type flags = { parentheses : bool }
+
+val current_flags : unit -> flags
+val of_extern_flags : PrintingFlags.Extern.t -> flags
+val of_combined_flags : PrintingFlags.Combined.t -> flags
+
 val pr_tight_coma : unit -> Pp.t
 
 val pr_with_comments : ?loc:Loc.t -> Pp.t -> Pp.t
@@ -41,19 +47,19 @@ val pr_guard_annot
 
 val pr_record : string -> string -> ('a -> Pp.t) -> 'a list -> Pp.t
 val pr_record_body : string -> string -> ('a -> Pp.t) -> (Libnames.qualid * 'a) list -> Pp.t
-val pr_binders : Environ.env -> Evd.evar_map -> local_binder_expr list -> Pp.t
-val pr_constr_pattern_expr : Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t
-val pr_lconstr_pattern_expr : Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t
-val pr_constr_expr : Environ.env -> Evd.evar_map -> constr_expr -> Pp.t
-val pr_lconstr_expr : Environ.env -> Evd.evar_map -> constr_expr -> Pp.t
-val pr_cases_pattern_expr : cases_pattern_expr -> Pp.t
-val pr_constr_expr_n : Environ.env -> Evd.evar_map -> entry_relative_level -> constr_expr -> Pp.t
+val pr_binders : flags:flags -> Environ.env -> Evd.evar_map -> local_binder_expr list -> Pp.t
+val pr_constr_pattern_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t
+val pr_lconstr_pattern_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t
+val pr_constr_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_expr -> Pp.t
+val pr_lconstr_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_expr -> Pp.t
+val pr_cases_pattern_expr : flags:flags -> cases_pattern_expr -> Pp.t
+val pr_constr_expr_n : flags:flags -> Environ.env -> Evd.evar_map -> entry_relative_level -> constr_expr -> Pp.t
 
 type term_pr = {
-  pr_constr_expr : Environ.env -> Evd.evar_map -> constr_expr -> Pp.t;
-  pr_lconstr_expr : Environ.env -> Evd.evar_map -> constr_expr -> Pp.t;
-  pr_constr_pattern_expr : Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t;
-  pr_lconstr_pattern_expr : Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t
+  pr_constr_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_expr -> Pp.t;
+  pr_lconstr_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_expr -> Pp.t;
+  pr_constr_pattern_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t;
+  pr_lconstr_pattern_expr : flags:flags -> Environ.env -> Evd.evar_map -> constr_pattern_expr -> Pp.t
 }
 
 val set_term_pr : term_pr -> unit
@@ -79,12 +85,13 @@ val ltop : entry_relative_level
 
 (* Print at level "simpleconstr"  (applications are surrounded with parentheses)
    ensured not to be overriden, on the contrary of pr_constr_expr *)
-val pr_simpleconstr : constr_expr -> Pp.t
+val pr_simpleconstr : flags:flags -> constr_expr -> Pp.t
 
 (* Print at level "top" (no parentheses)
    ensured not to be overriden, on the contrary of pr_lconstr_expr *)
-val pr_top : constr_expr -> Pp.t
+val pr_top : flags:flags -> constr_expr -> Pp.t
 
 val modular_constr_pr :
+  flags:flags ->
   ((unit->Pp.t) -> int option -> entry_relative_level -> constr_expr -> Pp.t) ->
   (unit->Pp.t) -> int option -> entry_relative_level -> constr_expr -> Pp.t

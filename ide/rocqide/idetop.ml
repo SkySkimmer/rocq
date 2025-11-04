@@ -220,7 +220,10 @@ let process_goal_diffs ~short diff_goal_map oldp nsigma ng =
   | Some oldp, Some diff_goal_map -> Proof_diffs.map_goal ng diff_goal_map
   | None, _ | _, None -> None
   in
-  let (hyps_pp_list, concl_pp) = Proof_diffs.diff_goal ~short ?og_s (Proof_diffs.make_goal env nsigma ng) in
+  let (hyps_pp_list, concl_pp) =
+    Proof_diffs.diff_goal ~short ?og_s ~flags:(PrintingFlags.Combined.current())
+      (Proof_diffs.make_goal env nsigma ng)
+  in
   { Interface.goal_hyp = hyps_pp_list; Interface.goal_ccl = concl_pp;
     Interface.goal_id = Proof.goal_uid ng; Interface.goal_name = name }
 
@@ -408,7 +411,7 @@ let proof_diff (diff_opt, sid) =
   | None -> CErrors.user_err (Pp.str "No proofs to diff.")
   | Some proof ->
       let old = Stm.get_prev_proof ~doc sid in
-      Proof_diffs.diff_proofs ~diff_opt ?old proof
+      Proof_diffs.diff_proofs ~flags:(PrintingFlags.Combined.current()) ~diff_opt ?old proof
 
 let debug_cmd = ref DebugHook.Action.Ignore
 

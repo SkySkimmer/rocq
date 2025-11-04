@@ -94,14 +94,14 @@ let { Goptions.get = print_relevances } =
     ~value:false
     ()
 
-(* detyping *)
+(* detyping.ml but extern time *)
 let { Goptions.get = print_factorize_match_patterns } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Factorizable";"Match";"Patterns"]
     ~value:true
     ()
 
-(* detyping *)
+(* detyping.ml but extern time *)
 let print_allow_match_default_clause = make_flag ["Printing";"Allow";"Match";"Default";"Clause"] true
 
 (* extern *)
@@ -159,3 +159,96 @@ let { Goptions.get = print_float } =
     ~key:["Printing";"Float"]
     ~value:true
     ()
+
+module Detype = struct
+  type t = {
+    raw : bool;
+    universes : bool;
+    qualities : bool;
+    relevances : bool;
+    evar_instances : bool;
+    wildcard : bool;
+    fast_names : bool;
+    synth_match_return : bool;
+    matching : bool;
+    primproj_params : bool;
+    unfolded_primproj_as_match : bool;
+    match_paramunivs : bool;
+  }
+
+  let current () = {
+    raw = !raw_print;
+    universes = !print_universes;
+    qualities = print_sort_quality();
+    relevances = print_relevances();
+    evar_instances = !print_evar_arguments;
+    wildcard = print_wildcard();
+    fast_names = fast_name_generation();
+    synth_match_return = synthetize_type();
+    matching = print_matching();
+    primproj_params = print_primproj_params();
+    unfolded_primproj_as_match = print_unfolded_primproj_asmatch();
+    match_paramunivs = print_match_paramunivs();
+  }
+end
+
+module Extern = struct
+  module FactorizeEqns = struct
+    type t = {
+      raw : bool;
+      factorize_match_patterns : bool;
+      allow_match_default_clause : bool;
+    }
+
+    let current () = {
+      raw = !raw_print;
+      factorize_match_patterns = print_factorize_match_patterns();
+      allow_match_default_clause = !print_allow_match_default_clause;
+    }
+  end
+
+  type t = {
+    raw : bool;
+    use_implicit_types : bool;
+    records : bool;
+    implicits : bool;
+    implicits_explicit_args : bool;
+    implicits_defensive : bool;
+    coercions : bool;
+    parentheses : bool;
+    notations : bool;
+    raw_literals : bool;
+    projections : bool;
+    float : bool;
+    factorize_eqns : FactorizeEqns.t;
+    (* XXX depth? *)
+  }
+
+  let current () = {
+    raw = !raw_print;
+    use_implicit_types = print_use_implicit_types();
+    records = get_record_print();
+    implicits = !print_implicits;
+    implicits_explicit_args = print_implicits_explicit_args();
+    implicits_defensive = !print_implicits_defensive;
+    coercions = !print_coercions;
+    parentheses = !print_parentheses;
+    notations = not !print_no_symbol;
+    raw_literals = !print_raw_literal;
+    projections = !print_projections;
+    float = print_float();
+    factorize_eqns = FactorizeEqns.current();
+  }
+end
+
+module Combined = struct
+  type t = {
+    detype : Detype.t;
+    extern : Extern.t;
+  }
+
+  let current () = {
+    detype = Detype.current();
+    extern = Extern.current();
+  }
+end

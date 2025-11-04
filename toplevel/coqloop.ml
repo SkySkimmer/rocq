@@ -430,7 +430,7 @@ let show_proof_diff_cmd ~state diff_opt =
   | None -> CErrors.user_err (str "No proofs to diff.")
   | Some proof ->
       let old = Stm.get_prev_proof ~doc:state.doc state.sid in
-      Proof_diffs.diff_proofs ~diff_opt ?old proof
+      Proof_diffs.diff_proofs ~flags:(PrintingFlags.Combined.current()) ~diff_opt ?old proof
 
 let ml_toplevel_state = ref None
 let ml_toplevel_include_ran = ref false

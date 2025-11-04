@@ -72,7 +72,9 @@ let pr_econstr t =
   Printer.pr_econstr_env env sigma t
 let ppconstr x = pp (pr_constr x)
 let ppeconstr x = pp (pr_econstr x)
-let ppconstr_expr x = let sigma,env = get_current_context () in pp (Ppconstr.pr_constr_expr env sigma x)
+let ppconstr_expr x = let sigma,env = get_current_context () in
+  let flags = Ppconstr.current_flags() in
+  pp (Ppconstr.pr_constr_expr ~flags env sigma x)
 let ppconstr_univ x = Flags.with_option PrintingFlags.print_universes ppconstr x
 let ppglob_constr = (fun x -> pp(with_env_evm pr_lglob_constr_env x))
 let pppattern = (fun x -> pp(envpp pr_constr_pattern_env x))

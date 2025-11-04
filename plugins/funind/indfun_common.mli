@@ -36,11 +36,12 @@ val jmeq : unit -> EConstr.constr
 val jmeq_refl : unit -> EConstr.constr
 val make_eq : unit -> EConstr.constr
 
-(* [with_full_print f a] applies [f] to [a] in full printing environment.
+(** Run the function with auto implicits off and dumglob paused  *)
+val without_implicit_declarations : (unit -> unit) -> unit -> unit
 
-   This function preserves the print settings
-*)
-val with_full_print : ('a -> 'b) -> 'a -> 'b
+val full_printing_flags : unit -> PrintingFlags.Combined.t
+
+val extern_env_full_printing : unit -> Constrextern.extern_env
 
 (*****************)
 

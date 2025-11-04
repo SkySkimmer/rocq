@@ -418,6 +418,8 @@ let rec pattern_to_term_and_type env typ =
              (cst_narg - List.length patternl)
              (fun i ->
                Detyping.detype Detyping.Now env
+                 (* XXX should we use full printing flags? *)
+                 ~flags:(PrintingFlags.Detype.current())
                  (Evd.from_env env)
                  csta.(i)))
       in
@@ -507,8 +509,10 @@ let rec build_entry_lc env sigma funnames avoid rt :
       let rt_as_constr, ctx = Pretyping.understand env (Evd.from_env env) rt in
       let rt_typ = Retyping.get_type_of env (Evd.from_env env) rt_as_constr in
       let res_raw_type =
-        Detyping.detype Detyping.Now env (Evd.from_env env)
-          rt_typ
+        Detyping.detype Detyping.Now
+          (* XXX should we use full printing flags? *)
+          ~flags:(PrintingFlags.Detype.current())
+          env (Evd.from_env env) rt_typ
       in
       let res = fresh_id args_res.to_avoid "_res" in
       let new_avoid = res :: args_res.to_avoid in
@@ -765,6 +769,8 @@ and build_entry_lc_from_case_term env sigma types funname make_discr
               let typ_of_id = Typing.type_of_variable env_with_pat_ids id in
               let raw_typ_of_id =
                 Detyping.detype Detyping.Now env_with_pat_ids
+                  (* XXX should we use full printing flags? *)
+                  ~flags:(PrintingFlags.Detype.current())
                   (Evd.from_env env) typ_of_id
               in
               mkGProd (Name id, raw_typ_of_id, acc))
@@ -802,6 +808,8 @@ and build_entry_lc_from_case_term env sigma types funname make_discr
              let this_pat_ids = ids_of_pat pat in
              let typ =
                Detyping.detype Detyping.Now new_env
+                 (* XXX should we use full printing flags? *)
+                 ~flags:(PrintingFlags.Detype.current())
                  (Evd.from_env env) typ_as_constr
              in
              let pat_as_term = pattern_to_term pat in
@@ -818,6 +826,8 @@ and build_entry_lc_from_case_term env sigma types funname make_discr
                    , let typ_of_id = Typing.type_of_variable new_env id in
                      let raw_typ_of_id =
                        Detyping.detype Detyping.Now new_env
+                         (* XXX should we use full printing flags? *)
+                         ~flags:(PrintingFlags.Detype.current())
                          (Evd.from_env env) typ_of_id
                      in
                      raw_typ_of_id )
@@ -979,6 +989,8 @@ let rec rebuild_cons env nb_args relname args crossed_types depth rt =
                , List.map
                    (fun p ->
                      Detyping.detype Detyping.Now env
+                       (* XXX should we use full printing flags? *)
+                       ~flags:(PrintingFlags.Detype.current())
                        (Evd.from_env env) p)
                    params
                  @ Array.to_list
@@ -1014,11 +1026,15 @@ let rec rebuild_cons env nb_args relname args crossed_types depth rt =
                   | Name id' ->
                     ( id'
                     , Detyping.detype Detyping.Now env
+                        (* XXX should we use full printing flags? *)
+                        ~flags:(PrintingFlags.Detype.current())
                         (Evd.from_env env) arg )
                     :: acc
                 else if EConstr.isVar sigma var_as_constr then
                   (EConstr.destVar sigma var_as_constr
                   , Detyping.detype Detyping.Now env
+                      (* XXX should we use full printing flags? *)
+                      ~flags:(PrintingFlags.Detype.current())
                       (Evd.from_env env) arg )
                   :: acc
                 else acc)
@@ -1335,13 +1351,9 @@ let do_build_inductive evd (funconstants : pconstant list)
             CAst.make
             @@ Constrexpr.CLetIn
                  ( CAst.make n
-                 , with_full_print
-                     Constrextern.(extern_glob_constr empty_extern_env)
-                     t
+                 ,  Constrextern.extern_glob_constr (extern_env_full_printing()) t
                  , Some
-                     (with_full_print
-                        Constrextern.(extern_glob_constr empty_extern_env)
-                        typ)
+                     (Constrextern.extern_glob_constr (extern_env_full_printing()) typ)
                  , acc )
           | None ->
             CAst.make
@@ -1350,9 +1362,7 @@ let do_build_inductive evd (funconstants : pconstant list)
                        ( [CAst.make n]
                        , None
                        , Constrexpr_ops.default_binder_kind
-                       , with_full_print
-                           Constrextern.(extern_glob_constr empty_extern_env)
-                           t ) ]
+                       , Constrextern.extern_glob_constr (extern_env_full_printing()) t ) ]
                  , acc ))
         rel_first_args
         (rebuild_return_type returned_types.(i))
@@ -1365,7 +1375,7 @@ let do_build_inductive evd (funconstants : pconstant list)
     Util.Array.fold_left2
       (fun env rel_name rel_ar ->
         let rex =
-          fst (with_full_print (Constrintern.interp_constr env evd) rel_ar)
+          fst (Constrintern.interp_constr env evd rel_ar)
         in
         let r = ERelevance.relevant in
         (* TODO relevance *)
@@ -1424,13 +1434,9 @@ let do_build_inductive evd (funconstants : pconstant list)
           CAst.make
           @@ Constrexpr.CLetIn
                ( CAst.make n
-               , with_full_print
-                   Constrextern.(extern_glob_constr empty_extern_env)
-                   t
+               , Constrextern.extern_glob_constr (extern_env_full_printing()) t
                , Some
-                   (with_full_print
-                      Constrextern.(extern_glob_constr empty_extern_env)
-                      typ)
+                   (Constrextern.extern_glob_constr (extern_env_full_printing()) typ)
                , acc )
         | None ->
           CAst.make
@@ -1439,9 +1445,7 @@ let do_build_inductive evd (funconstants : pconstant list)
                      ( [CAst.make n]
                      , None
                      , Constrexpr_ops.default_binder_kind
-                     , with_full_print
-                         Constrextern.(extern_glob_constr empty_extern_env)
-                         t ) ]
+                     , Constrextern.extern_glob_constr (extern_env_full_printing()) t ) ]
                , acc ))
       rel_first_args
       (rebuild_return_type returned_types.(i))
@@ -1465,17 +1469,15 @@ let do_build_inductive evd (funconstants : pconstant list)
           Constrexpr.CLocalDef
             ( CAst.make n
             , None
-            , Constrextern.(extern_glob_constr empty_extern_env) t
+            , Constrextern.(extern_glob_constr (extern_env_full_printing())) t
             , Some
-                (with_full_print
-                   Constrextern.(extern_glob_constr empty_extern_env)
-                   typ) )
+                (Constrextern.extern_glob_constr (extern_env_full_printing()) typ) )
         | None ->
           Constrexpr.CLocalAssum
             ( [CAst.make n]
             , None
             , Constrexpr_ops.default_binder_kind
-            , Constrextern.(extern_glob_constr empty_extern_env) t ))
+            , Constrextern.(extern_glob_constr (extern_env_full_printing())) t ))
       rels_params
   in
   let ext_rels_constructors =
@@ -1483,8 +1485,7 @@ let do_build_inductive evd (funconstants : pconstant list)
       (List.map (fun (id, t) ->
            ( Vernacexpr.([], NoCoercion, NoInstance)
            , ( CAst.make id
-             , with_full_print
-                 Constrextern.(extern_glob_type empty_extern_env)
+             , Constrextern.extern_glob_type (extern_env_full_printing())
                  ((* zeta_normalize *) alpha_rt rel_params_ids t) ) )))
       rel_constructors
   in
@@ -1526,7 +1527,7 @@ let do_build_inductive evd (funconstants : pconstant list)
       mode = None;
     }
     in
-    with_full_print
+    without_implicit_declarations
       (Flags.silently
          (fun () ->
             ComInductive.do_mutual_inductive ~flags
@@ -1579,6 +1580,7 @@ let do_build_inductive evd (funconstants : pconstant list)
     observe msg; raise reraise
 
 let build_inductive evd funconstants funsargs returned_types rtl =
+  (* XXX pass functionally (is it just the marked XXX near Detype.current calls?) *)
   let pu = !PrintingFlags.print_universes in
   try
     PrintingFlags.print_universes := true;

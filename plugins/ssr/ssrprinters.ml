@@ -46,11 +46,11 @@ let with_global_env_evm f x =
   let sigma = Evd.from_env env in
   f env sigma x
 
-let prl_constr_expr = with_global_env_evm Ppconstr.pr_lconstr_expr
+let prl_constr_expr c = with_global_env_evm Ppconstr.(pr_lconstr_expr ~flags:(current_flags())) c
 let pr_glob_constr = with_global_env_evm Printer.pr_glob_constr_env
 let prl_glob_constr = with_global_env_evm Printer.pr_lglob_constr_env
 let pr_glob_constr_and_expr = function
-  | _, Some c -> with_global_env_evm Ppconstr.pr_constr_expr c
+  | _, Some c -> with_global_env_evm Ppconstr.(pr_constr_expr ~flags:(current_flags())) c
   | c, None -> pr_glob_constr c
 let pr_term (k, c) = pr_guarded (guard_term k) pr_glob_constr_and_expr c
 
@@ -86,7 +86,7 @@ let pr_simpl = function
 let pr_ast_closure_term { body } =
   let env = Global.env () in
   let sigma = Evd.from_env env in
-  Ppconstr.pr_constr_expr env sigma body
+  Ppconstr.(pr_constr_expr ~flags:(current_flags())) env sigma body
 
 let pr_view2 = pr_list mt (fun c -> str "/" ++ pr_ast_closure_term c)
 

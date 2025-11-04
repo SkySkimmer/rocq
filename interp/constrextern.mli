@@ -25,18 +25,19 @@ open Ltac_pretype
 type extern_env = {
   vars : Id.Set.t;
   uvars : UnivNames.universe_binders;
+  flags : PrintingFlags.Extern.t;
 }
-val extern_env : env -> Evd.evar_map -> extern_env
+val extern_env : flags:PrintingFlags.Extern.t -> env -> Evd.evar_map -> extern_env
 
-val extern_cases_pattern : Id.Set.t -> 'a cases_pattern_g -> cases_pattern_expr
+val extern_cases_pattern : flags:PrintingFlags.Extern.t -> Id.Set.t -> 'a cases_pattern_g -> cases_pattern_expr
 val extern_glob_constr : extern_env -> 'a glob_constr_g -> constr_expr
 val extern_glob_type : ?impargs:Glob_term.binding_kind list -> extern_env -> 'a glob_constr_g -> constr_expr
-val extern_constr_pattern : names_context -> Evd.evar_map ->
+val extern_constr_pattern : flags:PrintingFlags.Extern.t -> names_context -> Evd.evar_map ->
   constr_pattern -> constr_expr
-val extern_uninstantiated_pattern : names_context -> Evd.evar_map ->
+val extern_uninstantiated_pattern : flags:PrintingFlags.Extern.t -> names_context -> Evd.evar_map ->
   uninstantiated_pattern -> constr_expr
 val extern_closed_glob : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name ->
-  env -> Evd.evar_map -> closed_glob_constr -> constr_expr
+  flags:PrintingFlags.Combined.t -> env -> Evd.evar_map -> closed_glob_constr -> constr_expr
 
 (** If [b=true] in [extern_constr b env c] then the variables in the first
    level of quantification clashing with the variables in [env] are renamed.
@@ -45,13 +46,15 @@ val extern_closed_glob : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_n
 *)
 
 val extern_constr : ?inctx:bool -> ?scope:scope_name ->
-  env -> Evd.evar_map -> constr -> constr_expr
+  flags:PrintingFlags.Combined.t -> env -> Evd.evar_map -> constr -> constr_expr
 val extern_constr_in_scope : ?inctx:bool -> scope_name ->
-  env -> Evd.evar_map -> constr -> constr_expr
+  flags:PrintingFlags.Combined.t -> env -> Evd.evar_map -> constr -> constr_expr
 val extern_reference : ?loc:Loc.t -> Id.Set.t -> GlobRef.t -> qualid
-val extern_type : ?goal_concl_style:bool -> env -> Evd.evar_map -> ?impargs:Glob_term.binding_kind list -> types -> constr_expr
-val extern_sort : Evd.evar_map -> Sorts.t -> sort_expr
-val extern_rel_context : env -> Evd.evar_map ->
+val extern_type : ?goal_concl_style:bool ->
+  flags:PrintingFlags.Combined.t -> env -> Evd.evar_map ->
+  ?impargs:Glob_term.binding_kind list -> types -> constr_expr
+val extern_sort : universes:bool -> qualities:bool -> Evd.evar_map -> Sorts.t -> sort_expr
+val extern_rel_context : flags:PrintingFlags.Combined.t -> env -> Evd.evar_map ->
   rel_context -> local_binder_expr list
 
 (** Customization of the global_reference printer *)
@@ -60,23 +63,7 @@ val set_extern_reference :
 val get_extern_reference :
   unit -> (?loc:Loc.t -> Id.Set.t -> GlobRef.t -> qualid)
 
-(** WARNING: The following functions are evil due to
-    side-effects. Think of the following case as used in the printer:
-
-    without_specific_symbols [AbbrevRule kn] (pr_glob_constr_env env) c
-
-    vs
-
-    without_specific_symbols [AbbrevRule kn] pr_glob_constr_env env c
-
-    which one is wrong? We should turn this kind of state into an
-    explicit argument.
-*)
-
-(** This suppresses printing of primitive tokens and notations *)
-val without_symbols : ('a -> 'b) -> 'a -> 'b
-
 (** Probably shouldn't be used *)
-val empty_extern_env : extern_env
+val empty_extern_env : flags:PrintingFlags.Extern.t -> extern_env
 
 val set_max_depth : int option -> unit

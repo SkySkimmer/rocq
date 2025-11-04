@@ -121,7 +121,7 @@ type prim_token_interp_info =
 
 val do_interp : ?loc:Loc.t -> prim_token_interp_info -> Constrexpr.prim_token -> Glob_term.glob_constr
 
-val do_uninterp : prim_token_interp_info -> _ Glob_term.glob_constr_g -> Constrexpr.prim_token option
+val do_uninterp : print_float:bool -> prim_token_interp_info -> _ Glob_term.glob_constr_g -> Constrexpr.prim_token option
 
 val can_interp : prim_token_interp_info -> Constrexpr.prim_token -> bool
 

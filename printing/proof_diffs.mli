@@ -49,13 +49,13 @@ Subgoals XML command to fetch just the conclusion of a goal.  This is useful,
 for example, when an IDE only needs to display the number of admitted goals or
 preview the next unsolved goal.
 *)
-val diff_goal : ?short:bool -> ?og_s:goal -> goal -> Pp.t list * Pp.t
+val diff_goal : ?short:bool -> ?og_s:goal -> flags:PrintingFlags.Combined.t -> goal -> Pp.t list * Pp.t
 
 (** Convert a string to a list of token strings using the lexer *)
 val tokenize_string : string -> string list
 
 (** Computes diffs for a single conclusion *)
-val diff_concl : ?og_s:goal -> goal -> Pp.t
+val diff_concl : ?og_s:goal -> flags:PrintingFlags.Combined.t -> goal -> Pp.t
 
 type goal_map
 
@@ -81,6 +81,6 @@ type hyp_info = {
 
 val diff_hyps : string list list -> hyp_info CString.Map.t -> string list list -> hyp_info CString.Map.t -> Pp.t list
 
-val diff_proofs : diff_opt:diffOpt -> ?old:Proof.t -> Proof.t -> Pp.t
+val diff_proofs : diff_opt:diffOpt -> ?old:Proof.t -> flags:PrintingFlags.Combined.t -> Proof.t -> Pp.t
 
 val notify_proof_diff_failure : string -> unit

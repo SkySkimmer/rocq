@@ -36,11 +36,15 @@ let pr_in_global_env f c : Pp.t =
   let sigma = Evd.from_env env in
   f env sigma c
 
+let pr_in_global_env_with_ppflags f c : Pp.t =
+  let flags = Ppconstr.current_flags () in
+  pr_in_global_env (f ~flags) c
+
 (* when not !Flags.beautify_file these just ignore the env/sigma *)
-let pr_constr_expr = pr_in_global_env pr_constr_expr
-let pr_lconstr_expr = pr_in_global_env pr_lconstr_expr
-let pr_binders = pr_in_global_env pr_binders
-let pr_constr_pattern_expr = pr_in_global_env pr_constr_pattern_expr
+let pr_constr_expr = pr_in_global_env_with_ppflags pr_constr_expr
+let pr_lconstr_expr = pr_in_global_env_with_ppflags pr_lconstr_expr
+let pr_binders = pr_in_global_env_with_ppflags pr_binders
+let pr_constr_pattern_expr = pr_in_global_env_with_ppflags pr_constr_pattern_expr
 let pr_user_red_expr = pr_in_global_env Redexpr.pr_raw_user_red_expr
 
 (* In principle this may use the env/sigma, in practice not sure if it

@@ -155,10 +155,10 @@ let rebuild_bl aux bl typ = rebuild_bl aux bl typ
 let recompute_binder_list (rec_order, fixpoint_exprl) =
   let typel, sigma = ComFixpoint.interp_fixpoint_short rec_order fixpoint_exprl in
   let constr_expr_typel =
-    with_full_print
-      (List.map (fun c ->
-           Constrextern.extern_constr (Global.env ()) sigma
-             (EConstr.of_constr c)))
+    let flags = full_printing_flags() in
+    (List.map (fun c ->
+         Constrextern.extern_constr ~flags (Global.env ()) sigma
+           (EConstr.of_constr c)))
       typel
   in
   let fixpoint_exprl_with_new_bl =
@@ -2042,12 +2042,10 @@ let make_graph (f_ref : GlobRef.t) =
   | Undef _ | Primitive _ | Symbol _ | OpaqueDef _ -> CErrors.user_err (Pp.str "Cannot build a graph over an axiom!")
   | Def body ->
     let extern_body, extern_type =
-      with_full_print
-        (fun () ->
-          ( Constrextern.extern_constr env sigma (EConstr.of_constr body)
-          , Constrextern.extern_type env sigma
-              (EConstr.of_constr (*FIXME*) c_body.Declarations.const_type) ))
-        ()
+      let flags = full_printing_flags() in
+      ( Constrextern.extern_constr env sigma ~flags (EConstr.of_constr body)
+      , Constrextern.extern_type env sigma ~flags
+          (EConstr.of_constr (*FIXME*) c_body.Declarations.const_type) )
     in
     let nal_tas, b, t = get_args extern_body extern_type in
     let expr_list =

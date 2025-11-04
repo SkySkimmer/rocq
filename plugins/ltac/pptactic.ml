@@ -28,6 +28,12 @@ open Tacexpr
 open Tacarg
 open Tactics
 
+(* XXX pass flag around? *)
+let pr_constr_expr env sigma c = pr_constr_expr ~flags:(current_flags()) env sigma c
+let pr_lconstr_expr env sigma c = pr_lconstr_expr ~flags:(current_flags()) env sigma c
+let pr_constr_pattern_expr env sigma c = pr_constr_pattern_expr ~flags:(current_flags()) env sigma c
+let pr_lconstr_pattern_expr env sigma c = pr_lconstr_pattern_expr ~flags:(current_flags()) env sigma c
+
 module Tag =
 struct
 
@@ -1281,8 +1287,13 @@ let pr_user_red_expr = Redexpr.pr_glob_user_red_expr
 
 let pr_red_expr_env r = Genprint.TopPrinterNeedsContext (fun env sigma ->
   pr_red_expr env sigma ((fun e -> pr_econstr_env e), (fun e -> pr_leconstr_env e),
-                         pr_evaluable_reference_env env, pr_constr_pattern_env,
-                         int, pr_user_red_expr) r)
+                         pr_evaluable_reference_env env,
+                         (fun env sigma c ->
+                            pr_constr_pattern_env
+                              ~flags:(PrintingFlags.Extern.current())
+                              env sigma c),
+                         int,
+                         pr_user_red_expr) r)
 
 let pr_bindings_env bl = Genprint.TopPrinterNeedsContext (fun env sigma ->
   let sigma, bl = bl env sigma in
@@ -1349,19 +1360,19 @@ let () =
   ;
   Genprint.register_print0
     wit_constr
-    (lift_env Ppconstr.pr_constr_expr)
+    (lift_env pr_constr_expr)
     (lift_env (fun env sigma (c, _) -> pr_glob_constr_pptac env sigma c))
     (make_constr_printer Printer.pr_econstr_n_env)
   ;
   Genprint.register_print0
     wit_uconstr
-    (lift_env Ppconstr.pr_constr_expr)
+    (lift_env pr_constr_expr)
     (lift_env (fun env sigma (c,_) -> pr_glob_constr_pptac env sigma c))
     (make_constr_printer Printer.pr_closed_glob_n_env)
   ;
   Genprint.register_print0
     wit_open_constr
-    (lift_env Ppconstr.pr_constr_expr)
+    (lift_env pr_constr_expr)
     (lift_env (fun env sigma (c, _) -> pr_glob_constr_pptac env sigma c))
     (make_constr_printer Printer.pr_econstr_n_env)
   ;

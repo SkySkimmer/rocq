@@ -608,7 +608,9 @@ let resolve_and_replace_implicits exptyp env sigma rt =
     match Evd.evar_body evi with
     | Evar_defined c ->
       (* we just have to lift the solution in glob_term *)
-      Detyping.detype Detyping.Now env ctx (f c)
+      (* XXX should we use full printing flags? *)
+      let flags = PrintingFlags.Detype.current() in
+      Detyping.detype Detyping.Now ~flags env ctx (f c)
     | Evar_empty ->
       (* the hole was not solved : we do nothing *)
       default

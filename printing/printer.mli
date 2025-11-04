@@ -49,30 +49,38 @@ val print_goal_tag_opt_name : string list
 *)
 
 
-val pr_constr_env          : ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> constr -> Pp.t
-val pr_lconstr_env         : ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> constr -> Pp.t
+val pr_constr_env : ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> constr -> Pp.t
+val pr_lconstr_env : ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> constr -> Pp.t
 
-val pr_constr_n_env        : ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> Constrexpr.entry_relative_level -> constr -> Pp.t
+val pr_constr_n_env        : ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constrexpr.entry_relative_level -> constr -> Pp.t
 
 (** Same, but resilient to [Nametab] errors. Prints fully-qualified
     names when [shortest_qualid_of_global] has failed. Prints "??"
     in case of remaining issues (such as reference not in env). *)
 
-val safe_pr_constr_env  : env -> evar_map -> constr -> Pp.t
-val safe_pr_lconstr_env : env -> evar_map -> constr -> Pp.t
+val safe_pr_constr_env  : ?flags:PrintingFlags.Combined.t -> env -> evar_map -> constr -> Pp.t
+val safe_pr_lconstr_env : ?flags:PrintingFlags.Combined.t -> env -> evar_map -> constr -> Pp.t
 val safe_extern_wrapper : (env -> evar_map -> 'a -> 'b) -> env -> evar_map -> 'a -> 'b option
 
-val pr_econstr_env      : ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> EConstr.t -> Pp.t
-val pr_leconstr_env     : ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> EConstr.t -> Pp.t
+val pr_econstr_env : ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.t -> Pp.t
+val pr_leconstr_env : ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.t -> Pp.t
 
-val pr_econstr_n_env    : ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> Constrexpr.entry_relative_level -> EConstr.t -> Pp.t
+val pr_econstr_n_env : ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constrexpr.entry_relative_level -> EConstr.t -> Pp.t
 
-val pr_etype_env        : ?goal_concl_style:bool -> env -> evar_map -> EConstr.types -> Pp.t
-val pr_letype_env       : ?goal_concl_style:bool -> env -> evar_map -> ?impargs:Glob_term.binding_kind list -> EConstr.types -> Pp.t
+val pr_etype_env : ?goal_concl_style:bool -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.types -> Pp.t
+val pr_letype_env : ?goal_concl_style:bool -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> ?impargs:Glob_term.binding_kind list -> EConstr.types -> Pp.t
 
-val pr_constr_under_binders_env  : env -> evar_map -> constr_under_binders -> Pp.t
+val pr_constr_under_binders_env : ?flags:PrintingFlags.Combined.t -> env -> evar_map -> constr_under_binders -> Pp.t
 
-val pr_lconstr_under_binders_env : env -> evar_map -> constr_under_binders -> Pp.t
+val pr_lconstr_under_binders_env : ?flags:PrintingFlags.Combined.t -> env -> evar_map -> constr_under_binders -> Pp.t
 
 (** Printers for types. Types are printed in scope "type_scope" and
     under the constraint of being of type a sort.
@@ -95,30 +103,42 @@ val pr_lconstr_under_binders_env : env -> evar_map -> constr_under_binders -> Pp
     scope of the binder to be printed are avoided.
 *)
 
-val pr_ltype_env           : ?goal_concl_style:bool -> env -> evar_map -> ?impargs:Glob_term.binding_kind list -> types -> Pp.t
-val pr_type_env            : ?goal_concl_style:bool -> env -> evar_map -> types -> Pp.t
+val pr_ltype_env : ?goal_concl_style:bool -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> ?impargs:Glob_term.binding_kind list -> types -> Pp.t
+val pr_type_env : ?goal_concl_style:bool -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> types -> Pp.t
 
-val pr_closed_glob_n_env   : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> Constrexpr.entry_relative_level -> closed_glob_constr -> Pp.t
-val pr_closed_glob_env     : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> closed_glob_constr -> Pp.t
-val pr_closed_lglob_env    : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name -> env -> evar_map -> closed_glob_constr -> Pp.t
+val pr_closed_glob_n_env : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constrexpr.entry_relative_level -> closed_glob_constr -> Pp.t
+val pr_closed_glob_env : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> closed_glob_constr -> Pp.t
+val pr_closed_lglob_env : ?goal_concl_style:bool -> ?inctx:bool -> ?scope:scope_name -> ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> closed_glob_constr -> Pp.t
 
-val pr_ljudge_env          : env -> evar_map -> EConstr.unsafe_judgment -> Pp.t * Pp.t
+val pr_ljudge_env : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.unsafe_judgment -> Pp.t * Pp.t
 
-val pr_lglob_constr_env    : env -> evar_map -> 'a glob_constr_g -> Pp.t
+val pr_lglob_constr_env : ?flags:PrintingFlags.Extern.t ->
+  env -> evar_map -> 'a glob_constr_g -> Pp.t
 
-val pr_glob_constr_env     : env -> evar_map -> 'a glob_constr_g -> Pp.t
+val pr_glob_constr_env : ?flags:PrintingFlags.Extern.t ->
+  env -> evar_map -> 'a glob_constr_g -> Pp.t
 
-val pr_lconstr_pattern_env : env -> evar_map -> constr_pattern -> Pp.t
+val pr_lconstr_pattern_env : ?flags:PrintingFlags.Extern.t ->
+  env -> evar_map -> constr_pattern -> Pp.t
 
-val pr_constr_pattern_env  : env -> evar_map -> constr_pattern -> Pp.t
+val pr_constr_pattern_env : ?flags:PrintingFlags.Extern.t ->
+  env -> evar_map -> constr_pattern -> Pp.t
 
-val pr_uninstantiated_lconstr_pattern_env : env -> evar_map -> uninstantiated_pattern -> Pp.t
+val pr_uninstantiated_lconstr_pattern_env : ?flags:PrintingFlags.Extern.t ->
+  env -> evar_map -> uninstantiated_pattern -> Pp.t
 
-val pr_uninstantiated_constr_pattern_env  : env -> evar_map -> uninstantiated_pattern -> Pp.t
+val pr_uninstantiated_constr_pattern_env : ?flags:PrintingFlags.Extern.t ->
+  env -> evar_map -> uninstantiated_pattern -> Pp.t
 
-val pr_cases_pattern       : cases_pattern -> Pp.t
+val pr_cases_pattern : ?flags:PrintingFlags.Extern.t -> cases_pattern -> Pp.t
 
-val pr_sort                : evar_map -> Sorts.t -> Pp.t
+val pr_sort : ?universes:bool -> ?qualities:bool -> evar_map -> Sorts.t -> Pp.t
 
 (** Universe constraints *)
 
@@ -152,7 +172,7 @@ val pr_global              : GlobRef.t -> Pp.t
 
 val pr_constant            : env -> Constant.t -> Pp.t
 val pr_existential_key     : env -> evar_map -> Evar.t -> Pp.t
-val pr_existential         : env -> evar_map -> existential -> Pp.t
+val pr_existential : ?flags:PrintingFlags.Combined.t -> env -> evar_map -> existential -> Pp.t
 val pr_constructor         : env -> constructor -> Pp.t
 val pr_inductive           : env -> inductive -> Pp.t
 val pr_evaluable_reference : Evaluable.t -> Pp.t
@@ -162,7 +182,6 @@ val pr_pinductive : env -> evar_map -> pinductive -> Pp.t
 val pr_pconstructor : env -> evar_map -> pconstructor -> Pp.t
 
 val pr_notation_interpretation_env : env -> evar_map -> glob_constr -> Pp.t
-val pr_notation_interpretation : glob_constr -> Pp.t
 
 (** Contexts *)
 
@@ -170,22 +189,33 @@ val pr_notation_interpretation : glob_constr -> Pp.t
 val set_compact_context : bool -> unit
 val get_compact_context : unit -> bool
 
-val pr_context_unlimited   : env -> evar_map -> Pp.t
-val pr_ne_context_of       : Pp.t -> env -> evar_map -> Pp.t
+val pr_context_unlimited : ?flags:PrintingFlags.Combined.t -> env -> evar_map -> Pp.t
+val pr_ne_context_of : Pp.t -> ?flags:PrintingFlags.Combined.t -> env -> evar_map -> Pp.t
 
-val pr_named_decl          : env -> evar_map -> Constr.named_declaration -> Pp.t
-val pr_compacted_decl      : env -> evar_map -> Constr.compacted_declaration -> Pp.t
-val pr_rel_decl            : env -> evar_map -> Constr.rel_declaration -> Pp.t
+val pr_named_decl : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constr.named_declaration -> Pp.t
+val pr_compacted_decl : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constr.compacted_declaration -> Pp.t
+val pr_rel_decl : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constr.rel_declaration -> Pp.t
 
-val pr_enamed_decl          : env -> evar_map -> EConstr.named_declaration -> Pp.t
-val pr_ecompacted_decl      : env -> evar_map -> EConstr.compacted_declaration -> Pp.t
-val pr_erel_decl            : env -> evar_map -> EConstr.rel_declaration -> Pp.t
+val pr_enamed_decl : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.named_declaration -> Pp.t
+val pr_ecompacted_decl : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.compacted_declaration -> Pp.t
+val pr_erel_decl : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> EConstr.rel_declaration -> Pp.t
 
-val pr_named_context       : env -> evar_map -> Constr.named_context -> Pp.t
-val pr_named_context_of    : env -> evar_map -> Pp.t
-val pr_rel_context         : env -> evar_map -> Constr.rel_context -> Pp.t
-val pr_rel_context_of      : env -> evar_map -> Pp.t
-val pr_context_of          : env -> evar_map -> Pp.t
+val pr_named_context : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constr.named_context -> Pp.t
+val pr_named_context_of : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Pp.t
+val pr_rel_context : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Constr.rel_context -> Pp.t
+val pr_rel_context_of : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Pp.t
+val pr_context_of : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> Pp.t
 
 (** Predicates *)
 
@@ -202,11 +232,16 @@ val pr_transparent_state   : TransparentState.t -> Pp.t
      conclusions.  If [oldp] is [Some oproof], highlight the differences between the old proof [oproof], and [proof].  [quiet]
      disables printing messages as Feedback.
 *)
-val pr_open_subgoals       : ?quiet:bool -> ?oldp:Proof.t option option -> Proof.t -> Pp.t
-val pr_nth_open_subgoal    : ?oldp:Proof.t option option -> proof:Proof.t -> int -> Pp.t
-val pr_evar                : evar_map -> (Evar.t * undefined evar_info) -> Pp.t
-val pr_evars_int           : evar_map -> shelf:Evar.t list -> given_up:Evar.t list -> int -> undefined evar_info Evar.Map.t -> Pp.t
-val pr_ne_evar_set         : Pp.t -> Pp.t -> evar_map ->
+val pr_open_subgoals : ?quiet:bool -> ?oldp:Proof.t option option -> ?flags:PrintingFlags.Combined.t ->
+  Proof.t -> Pp.t
+val pr_nth_open_subgoal : ?flags:PrintingFlags.Combined.t ->
+  ?oldp:Proof.t option option -> proof:Proof.t -> int -> Pp.t
+val pr_evar : ?flags:PrintingFlags.Combined.t ->
+  evar_map -> (Evar.t * undefined evar_info) -> Pp.t
+val pr_evars_int : ?flags:PrintingFlags.Combined.t ->
+  evar_map -> shelf:Evar.t list -> given_up:Evar.t list -> int -> undefined evar_info Evar.Map.t -> Pp.t
+val pr_ne_evar_set : ?flags:PrintingFlags.Combined.t ->
+  Pp.t -> Pp.t -> evar_map ->
   Evar.Set.t -> Pp.t
 
 (** Declarations for the "Print Assumption" command *)
@@ -227,10 +262,13 @@ module ContextObjectSet : CSet.ExtS with type elt = context_object
 module ContextObjectMap : CMap.ExtS
   with type key = context_object and module Set := ContextObjectSet
 
-val pr_assumptionset : env -> evar_map -> types ContextObjectMap.t -> Pp.t
+val pr_assumptionset : ?flags:PrintingFlags.Combined.t ->
+  env -> evar_map -> types ContextObjectMap.t -> Pp.t
 
-val pr_goal_by_id : ?oldp:Proof.t option option -> proof:Proof.t -> Id.t -> Pp.t
-val pr_goal_emacs : proof:Proof.t option -> int -> int -> Pp.t
+val pr_goal_by_id : ?flags:PrintingFlags.Combined.t ->
+  ?oldp:Proof.t option option -> proof:Proof.t -> Id.t -> Pp.t
+val pr_goal_emacs : ?flags:PrintingFlags.Combined.t ->
+  proof:Proof.t option -> int -> int -> Pp.t
 
 val pr_typing_flags : Declarations.typing_flags -> Pp.t
 
@@ -241,7 +279,7 @@ val print_goal_name : evar_map -> Evar.t -> bool
 module Debug :
 sig
 
-val pr_goal : Proofview.Goal.t -> Pp.t
+val pr_goal : ?flags:PrintingFlags.Combined.t -> Proofview.Goal.t -> Pp.t
 
 end
 (** Debug printers *)

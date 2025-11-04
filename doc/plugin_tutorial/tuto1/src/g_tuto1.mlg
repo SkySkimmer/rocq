@@ -41,7 +41,9 @@ VERNAC COMMAND EXTEND WhatIsThis CLASSIFIED AS QUERY
    {
      let env = Global.env () in (* we'll explain later *)
      let sigma = Evd.from_env env in (* we'll explain later *)
-     Inspector.print_input e (Ppconstr.pr_constr_expr env sigma) "term"
+     (* current Printing settings (specifically the ones applicable to printing connstr_expr) *)
+     let flags = Ppconstr.current_flags() in
+     Inspector.print_input e (Ppconstr.pr_constr_expr ~flags env sigma) "term"
    }
 | [ "What" "kind" "of" "term" "is" string(s) ] ->
    { Inspector.print_input s strbrk "string" }

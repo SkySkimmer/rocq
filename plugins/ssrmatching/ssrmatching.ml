@@ -80,16 +80,16 @@ let pr_guarded guard prc c =
 let with_global_env_evm f x =
   let env = Global.env () in
   let sigma = Evd.from_env env in
-  f env sigma x
+  f ?flags:None env sigma x
 let prl_glob_constr = with_global_env_evm pr_lglob_constr_env
 let pr_glob_constr = with_global_env_evm pr_glob_constr_env
 let prl_constr_expr = pr_lconstr_expr
 let pr_constr_expr = pr_constr_expr
 let prl_glob_constr_and_expr env sigma = function
-  | _, Some c -> prl_constr_expr env sigma c
+  | _, Some c -> prl_constr_expr ~flags:(current_flags()) env sigma c
   | c, None -> prl_glob_constr c
 let pr_glob_constr_and_expr env sigma = function
-  | _, Some c -> pr_constr_expr env sigma c
+  | _, Some c -> pr_constr_expr ~flags:(current_flags()) env sigma c
   | c, None -> pr_glob_constr c
 
 (** Adding a new uninterpreted generic argument type *)

@@ -8,69 +8,85 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
+module Detype : sig
+  type t = {
+    raw : bool;
+    universes : bool;
+    (** Should we print hidden sort quality variables? *)
+    qualities : bool;
+    relevances : bool;
+    (** If true, prints full local context of evars *)
+    evar_instances : bool;
+    wildcard : bool;
+    fast_names : bool;
+    synth_match_return : bool;
+    matching : bool;
+    primproj_params : bool;
+    unfolded_primproj_as_match : bool;
+    match_paramunivs : bool;
+  }
+
+  val current : unit -> t
+end
+
+module Extern : sig
+  module FactorizeEqns : sig
+    type t = {
+      raw : bool;
+      (** If true, contract branches with same r.h.s. and same matching
+          variables in a disjunctive pattern *)
+      factorize_match_patterns : bool;
+      (** If this flag is true and the last non unique clause of a
+          "match" is a variable-free disjunctive pattern, turn it into a
+          catch-call case *)
+      allow_match_default_clause : bool;
+    }
+
+    val current : unit -> t
+  end
+
+  type t = {
+    raw : bool;
+    (** This tells to skip types if a variable has this type by default *)
+    use_implicit_types : bool;
+    records : bool;
+    implicits : bool;
+    (** When [implicits] is on then [implicits_explicit_args] tells
+        how implicit args are printed. If on, implicit args are
+        printed with the form (id:=arg) otherwise arguments are
+        printed normally and the function is prefixed by "@". *)
+    implicits_explicit_args : bool;
+    (** Tells if implicit arguments not known to be inferable from a rigid
+        position are systematically printed *)
+    implicits_defensive : bool;
+    coercions : bool;
+    parentheses : bool;
+    notations : bool;
+    (** primitive tokens, like strings *)
+    raw_literals : bool;
+    (** This governs printing of projections using the dot notation symbols *)
+    projections : bool;
+    float : bool;
+    factorize_eqns : FactorizeEqns.t;
+    (* XXX depth? *)
+  }
+
+  val current : unit -> t
+end
+
+(* XXX don't use submodule for this? ie PrintingFlags.t = detype * extern etc  *)
+module Combined : sig
+  type t = {
+    detype : Detype.t;
+    extern : Extern.t;
+  }
+
+  val current : unit -> t
+end
+
+(** These flags are still accessed directly, but not when printing constr *)
+
 (* Set Printing All flag. *)
 val raw_print : bool ref
 
 val print_universes : bool ref
-
-(** Should we print hidden sort quality variables? *)
-val print_sort_quality : unit -> bool
-
-(** If true, prints full local context of evars *)
-val print_evar_arguments : bool ref
-
-val print_wildcard : unit -> bool
-
-val fast_name_generation : unit -> bool
-
-val synthetize_type : unit -> bool
-
-val print_matching : unit -> bool
-
-val print_primproj_params : unit -> bool
-
-val print_unfolded_primproj_asmatch : unit -> bool
-
-val print_match_paramunivs : unit -> bool
-
-val print_relevances : unit -> bool
-
-(** If true, contract branches with same r.h.s. and same matching
-    variables in a disjunctive pattern *)
-val print_factorize_match_patterns : unit -> bool
-
-(** If this flag is true and the last non unique clause of a "match" is a
-    variable-free disjunctive pattern, turn it into a catch-call case *)
-val print_allow_match_default_clause : bool ref
-
-val print_coercions : bool ref
-
-val print_parentheses : bool ref
-
-(** When [print_implicits] is on then [print_implicits_explicit_args]
-    tells how implicit args are printed. If on, implicit args are
-    printed with the form (id:=arg) otherwise arguments are printed
-    normally and the function is prefixed by "@". *)
-val print_implicits_explicit_args : unit -> bool
-
-val print_implicits : bool ref
-
-(** Tells if implicit arguments not known to be inferable from a rigid
-    position are systematically printed *)
-val print_implicits_defensive : bool ref
-
-(** This governs printing of projections using the dot notation symbols *)
-val print_projections : bool ref
-
-(** Negated version of Printing Notations (negated for convenience in Himsg.explicit_flags)  *)
-val print_no_symbol : bool ref
-
-(** Print primitive tokens, like strings *)
-val print_raw_literal : bool ref
-
-(** This tells to skip types if a variable has this type by default *)
-val print_use_implicit_types : unit -> bool
-
-val get_record_print : unit -> bool
-
-val print_float : unit -> bool

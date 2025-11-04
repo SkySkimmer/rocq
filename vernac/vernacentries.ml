@@ -1864,9 +1864,9 @@ let vernac_reserve bl =
     let env = Global.env() in
     let sigma = Evd.from_env env in
     let t,ctx = Constrintern.interp_type env sigma c in
-    let t = Flags.without_option PrintingFlags.print_universes (fun () ->
-        Detyping.detype Detyping.Now env (Evd.from_ctx ctx) t)
-        ()
+    let t =
+      let flags = { (PrintingFlags.Detype.current()) with universes = false } in
+      Detyping.detype Detyping.Now ~flags env (Evd.from_ctx ctx) t
     in
     let t,_ = Notation_ops.notation_constr_of_glob_constr (default_env ()) t in
     Reserve.declare_reserved_type idl t)
@@ -2222,6 +2222,11 @@ let print_about_hyp_globs ~pstate ?loc ref_or_by_not udecl glopt =
     let sigma, env = get_current_or_global_context ~pstate in
     Prettyp.print_about env sigma ref_or_by_not udecl
 
+let prglob_without_notations env sigma c =
+  let flags = PrintingFlags.Extern.current() in
+  let flags = { flags with notations = false } in
+  pr_glob_constr_env ~flags env sigma c
+
 let vernac_print =
   let no_state f =
     Vernactypes.(typed_vernac_gen ignore_state (fun _ -> no_state, f ()))
@@ -2297,11 +2302,11 @@ let vernac_print =
   | PrintHintDb -> with_proof_env @@ fun env sigma ->
     Hints.pr_searchtable env sigma
   | PrintScopes -> with_proof_env @@ fun env sigma ->
-    Notation.pr_scopes (Constrextern.without_symbols (pr_glob_constr_env env sigma))
+    Notation.pr_scopes (prglob_without_notations env sigma)
   | PrintScope s -> with_proof_env @@ fun env sigma ->
-    Notation.pr_scope (Constrextern.without_symbols (pr_glob_constr_env env sigma)) s
+    Notation.pr_scope (prglob_without_notations env sigma) s
   | PrintVisibility s -> with_proof_env @@ fun env sigma ->
-    Notation.pr_visibility (Constrextern.without_symbols (pr_glob_constr_env env sigma)) s
+    Notation.pr_visibility (prglob_without_notations env sigma) s
   | PrintAbout (ref_or_by_not,udecl,glnumopt) -> with_pstate @@
     print_about_hyp_globs ref_or_by_not udecl glnumopt
   | PrintImplicit qid -> with_proof_env @@ fun env _sigma ->
@@ -2342,7 +2347,7 @@ let vernac_locate ~pstate query =
   | LocateAny {v=ByNotation (ntn, sc)} (* TODO : handle Ltac notations *)
   | LocateTerm {v=ByNotation (ntn, sc)} ->
     Notation.locate_notation
-      (Constrextern.without_symbols (pr_glob_constr_env env sigma)) ntn sc
+      (prglob_without_notations env sigma) ntn sc
   | LocateLibrary qid -> print_located_library qid
   | LocateModule qid -> Prettyp.print_located_module env qid
   | LocateOther (s, qid) -> Prettyp.print_located_other env s qid

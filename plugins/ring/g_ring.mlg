@@ -36,6 +36,8 @@ END
 open Pptactic
 open Ppconstr
 
+let pr_constr_expr env sigma c = pr_constr_expr ~flags:(current_flags()) env sigma c
+
 let pr_ring_mod env sigma = function
   | Ring_kind (Computational eq_test) -> str "decidable" ++ pr_arg (pr_constr_expr env sigma) eq_test
   | Ring_kind Abstract ->  str "abstract"

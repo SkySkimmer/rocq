@@ -840,7 +840,7 @@ let explain_differing_params kind (ind,p) (ind',p') =
     | (up,p) ->
       let env = Global.env() in
       let sigma = Evd.from_env env in
-      let pr_binders = Ppconstr.pr_binders env sigma in
+      let pr_binders = Ppconstr.pr_binders ~flags:(Ppconstr.current_flags()) env sigma in
       str "parameters" ++ spc() ++ hov 1 (quote (pr_binders up ++ pr_opt (fun p -> str "|" ++ spc() ++ pr_binders p) p))
   in
   v 0

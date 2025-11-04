@@ -802,9 +802,9 @@ let bigint_of_rocqpos_neg_int63 c = match TokenValue.kind c with
 | TConstruct ((_, 2), [c']) (* Neg *) -> Z.neg (bigint_of_int63 c')
 | _ -> raise NotAValidPrimToken
 
-let uninterp_float64 c = match TokenValue.kind c with
+let uninterp_float64 ~print_float c = match TokenValue.kind c with
 | TFloat f when not (Float64.is_infinity f || Float64.is_neg_infinity f
-                    || Float64.is_nan f) && PrintingFlags.print_float () ->
+                    || Float64.is_nan f) && print_float ->
   NumTok.Signed.of_string (Float64.to_string f)
 | _ -> raise NotAValidPrimToken
 
@@ -846,14 +846,14 @@ let interp o ?loc n =
      | Option -> interp_option "number" "number" o.ty_name ?loc env sigma o.to_post res
      | Error -> interp_error "number" "number" o.ty_name ?loc env sigma o.to_post res
 
-let uninterp o n =
+let uninterp ~print_float o n =
   PrimTokenNotation.uninterp
     begin function
       | (Int _, c) -> NumTok.Signed.of_int (rawnum_of_rocqint c)
       | (UInt _, c) -> NumTok.Signed.of_nat (rawnum_of_rocquint c)
       | (Z _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_z c)
       | (Int63 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg_int63 c)
-      | (Float64, c) -> uninterp_float64 c
+      | (Float64, c) -> uninterp_float64 ~print_float c
       | (Number _, c) -> rawnum_of_rocqnumber c
     end o n
 end
@@ -1014,11 +1014,11 @@ let do_interp ?loc info p =
   in
   InnerPrimToken.do_interp ?loc interp p
 
-let do_uninterp info c =
+let do_uninterp ~print_float info c =
   try
     let uninterp = match info with
       | Uid uid -> Hashtbl.find prim_token_uninterpreters uid
-      | NumberNotation o -> InnerPrimToken.RawNumUninterp (Numbers.uninterp o)
+      | NumberNotation o -> InnerPrimToken.RawNumUninterp (Numbers.uninterp ~print_float o)
       | StringNotation o -> InnerPrimToken.StringUninterp (Strings.uninterp o)
     in
     InnerPrimToken.do_uninterp uninterp (AnyGlobConstr c)

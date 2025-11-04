@@ -781,11 +781,11 @@ let notation_constr_of_glob_constr nenv a =
 (**********************************************************************)
 (* Substitution of kernel names, avoiding a list of bound identifiers *)
 
-let notation_constr_of_constr avoid t =
+let notation_constr_of_constr ~flags avoid t =
   let t = EConstr.of_constr t in
   let env = Global.env () in
   let evd = Evd.from_env env in
-  let t = Detyping.detype Detyping.Now ~avoid env evd t in
+  let t = Detyping.detype Detyping.Now ~flags ~avoid env evd t in
   let nenv = {
     ninterp_var_type = Id.Map.empty;
     ninterp_rec_vars = Id.Map.empty;
@@ -808,7 +808,8 @@ let rec subst_notation_constr subst bound raw =
       if ref' == ref then raw else (match t with
           | None -> NRef (ref',u)
           | Some t ->
-            fst (notation_constr_of_constr bound t.UVars.univ_abstracted_value))
+            let flags = PrintingFlags.Detype.current() in
+            fst (notation_constr_of_constr ~flags bound t.UVars.univ_abstracted_value))
 
   | NVar _ -> raw
 
@@ -1428,6 +1429,7 @@ let add_meta_term x metas = (x,NtnTypeConstr)::metas
 
 type match_flags = {
   print_parentheses : bool;
+  factorize_eqns : PrintingFlags.Extern.FactorizeEqns.t;
 }
 
 let match_termlist flags match_fun alp metas sigma rest x y iter termin revert =
@@ -1553,7 +1555,7 @@ let rec match_ inner u alp metas sigma a1 a2 =
       with
         No_match ->
         List.fold_left2_set No_match (match_disjunctive_equations u alp metas) sigma
-           (Detyping.factorize_eqns eqnl1)
+           (Detyping.factorize_eqns ~flags:u.factorize_eqns eqnl1)
            (List.map (fun (patl,rhs) -> ([patl],rhs)) eqnl2))
   | GLetTuple (nal1,(na1,to1),b1,c1), NLetTuple (nal2,(na2,to2),b2,c2)
       when Int.equal (List.length nal1) (List.length nal2) ->
@@ -1648,7 +1650,8 @@ and match_extended_binders ?loc isprod u alp metas na1 na2 bk t sigma b1 b2 =
   match na1, DAst.get b1, na2 with
   (* Matching individual binders as part of a recursive pattern *)
   | Name p, GCases (Constr.LetPatternStyle,None,[(e,_)],(_::_ as eqns)), Name id
-       when is_gvar p e && is_bindinglist_meta id metas && List.length (store (Detyping.factorize_eqns eqns)) = 1 ->
+    when is_gvar p e && is_bindinglist_meta id metas
+         && List.length (store (Detyping.factorize_eqns ~flags:u.factorize_eqns eqns)) = 1 ->
     (match get () with
      | [{CAst.v=(ids,disj_of_patl,b1)}] ->
      let disjpat = List.map (function [pat] -> pat | _ -> assert false) disj_of_patl in
@@ -1657,7 +1660,8 @@ and match_extended_binders ?loc isprod u alp metas na1 na2 bk t sigma b1 b2 =
      match_in u alp metas sigma b1 b2
      | _ -> assert false)
   | Name p, GCases (LetPatternStyle,None,[(e,_)],(_::_ as eqns)), Name id
-       when is_gvar p e && is_onlybinding_pattern_like_meta false id metas && List.length (store (Detyping.factorize_eqns eqns)) = 1 ->
+    when is_gvar p e && is_onlybinding_pattern_like_meta false id metas
+         && List.length (store (Detyping.factorize_eqns ~flags:u.factorize_eqns eqns)) = 1 ->
     (match get () with
      | [{CAst.v=(ids,disj_of_patl,b1)}] ->
      let disjpat = List.map (function [pat] -> pat | _ -> assert false) disj_of_patl in
@@ -1734,9 +1738,9 @@ let group_by_type ids (terms,termlists,binders,binderlists) =
        (terms',termlists',binders',(bl,scl)::binderlists'))
     ids ([],[],[],[])
 
-let match_notation_constr ~print_parentheses c ~vars (metas,pat) =
+let match_notation_constr ~print_parentheses ~factorize_eqns c ~vars (metas,pat) =
   let metatyps = List.map (fun (id,(_,_,typ)) -> (id,typ)) metas in
-  let flags = { print_parentheses; } in
+  let flags = { print_parentheses; factorize_eqns } in
   let subst = match_ false flags {actualvars=vars;staticbinders=[];renaming=[]} metatyps ([],[],[],[]) c pat in
   group_by_type metas subst
 
