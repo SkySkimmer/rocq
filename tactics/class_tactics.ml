@@ -1242,7 +1242,7 @@ let resolve_all_evars depth unique env p oevd fail =
         str"fail = " ++ bool fail);
     ppdebug 2 (fun () ->
         str"Initial evar map: " ++
-        Termops.pr_evar_map ~with_univs:!Detyping.print_universes None env oevd)
+        Termops.pr_evar_map ~with_univs:!PrintingFlags.print_universes None env oevd)
   in
   let split = split_evars p env oevd in
   let in_comp comp ev = Evar.Set.mem ev comp in
@@ -1250,7 +1250,7 @@ let resolve_all_evars depth unique env p oevd fail =
     | [] ->
       let () = ppdebug 2 (fun () ->
           str"Final evar map: " ++
-          Termops.pr_evar_map ~with_univs:!Detyping.print_universes None env evd)
+          Termops.pr_evar_map ~with_univs:!PrintingFlags.print_universes None env evd)
       in
       evd
     | comp :: comps ->

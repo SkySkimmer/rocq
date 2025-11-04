@@ -13,7 +13,7 @@ let rawdebug = ref false
 let () =
   Flags.in_debugger := true;
   Goptions.set_bool_option_value ["Printing";"Existential";"Instances"] true;
-  Detyping.print_universes := true;
+  PrintingFlags.print_universes := true;
   Goptions.set_bool_option_value ["Printing";"Matching"] false;
   Goptions.set_bool_option_value ["Printing";"Sort";"Qualities"] true;
   (* When printers are used from ocamldebug, they should not make calls to the global env

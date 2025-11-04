@@ -21,9 +21,6 @@ type _ delay =
 | Now : 'a delay
 | Later : [ `thunk ] delay
 
-(** Should we keep details of universes during detyping ? *)
-val print_universes : bool ref
-
 (** If true, prints full local context of evars *)
 val print_evar_arguments : bool ref
 

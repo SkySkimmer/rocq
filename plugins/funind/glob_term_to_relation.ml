@@ -1579,15 +1579,11 @@ let do_build_inductive evd (funconstants : pconstant list)
     observe msg; raise reraise
 
 let build_inductive evd funconstants funsargs returned_types rtl =
-  let pu = !Detyping.print_universes in
-  let cu = !Detyping.print_universes in
+  let pu = !PrintingFlags.print_universes in
   try
-    Detyping.print_universes := true;
-    Detyping.print_universes := true;
+    PrintingFlags.print_universes := true;
     do_build_inductive evd funconstants funsargs returned_types rtl;
-    Detyping.print_universes := pu;
-    Detyping.print_universes := cu
+    PrintingFlags.print_universes := pu;
   with e when CErrors.noncritical e ->
-    Detyping.print_universes := pu;
-    Detyping.print_universes := cu;
+    PrintingFlags.print_universes := pu;
     raise (Building_graph e)

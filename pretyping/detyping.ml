@@ -205,9 +205,6 @@ type _ delay =
 | Now : 'a delay
 | Later : [ `thunk ] delay
 
-(** Should we keep details of universes during detyping ? *)
-let print_universes = ref false
-
 (** Should we print hidden sort quality variables? *)
 let { Goptions.get = print_sort_quality } =
   Goptions.declare_bool_option_and_ref
@@ -389,11 +386,11 @@ let detype_sort sigma = function
   | Prop -> glob_Prop_sort
   | Set -> glob_Set_sort
   | Type u ->
-      (if !print_universes
+      (if !PrintingFlags.print_universes
        then None, detype_universe sigma u
        else glob_Type_sort)
   | QSort (q, u) ->
-    if !print_universes then
+    if !PrintingFlags.print_universes then
       let q = if print_sort_quality () || Evd.is_rigid_qvar sigma q then
           Some (detype_qvar sigma q)
         else None
@@ -848,7 +845,7 @@ type binder_kind = BProd | BLambda | BLetIn
 (* Main detyping function                                             *)
 
 let detype_instance sigma l =
-  if not !print_universes then None
+  if not !PrintingFlags.print_universes then None
   else
     let l = EInstance.kind sigma l in
     if UVars.Instance.is_empty l then None

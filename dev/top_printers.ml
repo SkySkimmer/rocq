@@ -73,7 +73,7 @@ let pr_econstr t =
 let ppconstr x = pp (pr_constr x)
 let ppeconstr x = pp (pr_econstr x)
 let ppconstr_expr x = let sigma,env = get_current_context () in pp (Ppconstr.pr_constr_expr env sigma x)
-let ppconstr_univ x = Flags.with_option Detyping.print_universes ppconstr x
+let ppconstr_univ x = Flags.with_option PrintingFlags.print_universes ppconstr x
 let ppglob_constr = (fun x -> pp(with_env_evm pr_lglob_constr_env x))
 let pppattern = (fun x -> pp(envpp pr_constr_pattern_env x))
 let pptype = (fun x -> try pp(envpp (fun env evm t -> pr_ltype_env env evm t) x) with e -> pp (str (Printexc.to_string e)))
@@ -225,8 +225,8 @@ let ppmetamap metas =
   let env = Global.env () in
   let sigma = Evd.from_env env in
   pp (Unification.Meta.pr_metamap env sigma metas)
-let ppevm evd = pp(Termops.pr_evar_map ~with_univs:!Detyping.print_universes (Some 2) (Global.env ()) evd)
-let ppevmall evd = pp(Termops.pr_evar_map ~with_univs:!Detyping.print_universes None (Global.env ()) evd)
+let ppevm evd = pp(Termops.pr_evar_map ~with_univs:!PrintingFlags.print_universes (Some 2) (Global.env ()) evd)
+let ppevmall evd = pp(Termops.pr_evar_map ~with_univs:!PrintingFlags.print_universes None (Global.env ()) evd)
 let pr_existentialset evars =
   prlist_with_sep spc pr_evar (Evar.Set.elements evars)
 let ppexistentialset evars =

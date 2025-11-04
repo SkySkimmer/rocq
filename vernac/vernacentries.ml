@@ -1864,7 +1864,7 @@ let vernac_reserve bl =
     let env = Global.env() in
     let sigma = Evd.from_env env in
     let t,ctx = Constrintern.interp_type env sigma c in
-    let t = Flags.without_option Detyping.print_universes (fun () ->
+    let t = Flags.without_option PrintingFlags.print_universes (fun () ->
         Detyping.detype Detyping.Now env (Evd.from_ctx ctx) t)
         ()
     in
@@ -2037,14 +2037,6 @@ let () =
       optkey   = ["Printing";"Width"];
       optread  = Topfmt.get_margin;
       optwrite = Topfmt.set_margin }
-
-let () =
-  declare_bool_option
-    { optstage = Summary.Stage.Interp;
-      optdepr  = None;
-      optkey   = ["Printing";"Universes"];
-      optread  = (fun () -> !Detyping.print_universes);
-      optwrite = (fun b -> Detyping.print_universes:=b) }
 
 let () =
   (* no summary: handled as part of the debug state *)

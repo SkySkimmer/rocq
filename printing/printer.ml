@@ -247,13 +247,13 @@ let universe_binders_with_opt_names orig names =
   names
 
 let pr_universe_ctx_set sigma c =
-  if !Detyping.print_universes && not (Univ.ContextSet.is_empty c) then
+  if !PrintingFlags.print_universes && not (Univ.ContextSet.is_empty c) then
     fnl()++pr_in_comment (v 0 (Univ.ContextSet.pr (Termops.pr_evd_level sigma) c))
   else
     mt()
 
 let pr_universe_ctx sigma ?variance c =
-  if !Detyping.print_universes && not (UVars.UContext.is_empty c) then
+  if !PrintingFlags.print_universes && not (UVars.UContext.is_empty c) then
     fnl()++
     pr_in_comment
       (v 0
@@ -266,7 +266,7 @@ let pr_abstract_universe_ctx sigma ?variance ?priv c =
   let open Univ in
   let priv = Option.default Univ.ContextSet.empty priv in
   let has_priv = not (ContextSet.is_empty priv) in
-  if !Detyping.print_universes && (not (UVars.AbstractContext.is_empty c) || has_priv) then
+  if !PrintingFlags.print_universes && (not (UVars.AbstractContext.is_empty c) || has_priv) then
     let prqvar u = Termops.pr_evd_qvar sigma u in
     let prlev u = Termops.pr_evd_level sigma u in
     let pub = (if has_priv then str "Public universes:" ++ fnl() else mt()) ++ v 0 (UVars.pr_abstract_universe_context prqvar prlev ?variance c) in
@@ -303,7 +303,7 @@ let pr_universe_instance evd inst =
   str "@{" ++ UVars.Instance.pr prqvar prlev inst ++ str "}"
 
 let pr_puniverses f env sigma (c,u) =
-  if !Detyping.print_universes
+  if !PrintingFlags.print_universes
   then f env c ++ pr_universe_instance sigma u
   else f env c
 

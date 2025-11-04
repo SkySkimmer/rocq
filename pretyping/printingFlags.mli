@@ -8,5 +8,7 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
-(** Set Printing All *)
+(* Set Printing All flag. *)
 val raw_print : bool ref
+
+val print_universes : bool ref
