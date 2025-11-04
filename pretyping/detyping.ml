@@ -289,12 +289,6 @@ module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
 (* Flags.for printing or not wildcard and synthetisable types *)
 
-let { Goptions.get = fast_name_generation } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Fast";"Name";"Printing"]
-    ~value:false
-    ()
-
 let { Goptions.get = synthetize_type } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Synth"]
@@ -1081,12 +1075,12 @@ let detype_rel_context d flags avoid env sigma sign =
 
 let detype d ?(isgoal=false) ?avoid env sigma t =
   let flags = { flg_isgoal = isgoal; } in
-  let avoid = Avoid.make ~fast:(fast_name_generation ()) avoid in
+  let avoid = Avoid.make ~fast:(PrintingFlags.fast_name_generation ()) avoid in
   detype d flags avoid (names_of_rel_context env, env) sigma t
 
 let detype_rel_context d ?avoid env sigma sign =
   let flags = { flg_isgoal = false; } in
-  let avoid = Avoid.make ~fast:(fast_name_generation ()) avoid in
+  let avoid = Avoid.make ~fast:(PrintingFlags.fast_name_generation ()) avoid in
   detype_rel_context d flags avoid env sigma sign
 
 let detype_closed_glob ?isgoal ?avoid env sigma t =

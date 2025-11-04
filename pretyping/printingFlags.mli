@@ -21,6 +21,8 @@ val print_evar_arguments : bool ref
 
 val print_wildcard : unit -> bool
 
+val fast_name_generation : unit -> bool
+
 val print_coercions : bool ref
 
 val print_parentheses : bool ref

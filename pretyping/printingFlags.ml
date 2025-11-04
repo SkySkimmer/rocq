@@ -45,6 +45,13 @@ let { Goptions.get = print_wildcard } =
     ~value:true
     ()
 
+(* detyping *)
+let { Goptions.get = fast_name_generation } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Fast";"Name";"Printing"]
+    ~value:false
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 
