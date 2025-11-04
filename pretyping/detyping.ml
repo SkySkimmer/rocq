@@ -205,13 +205,6 @@ type _ delay =
 | Now : 'a delay
 | Later : [ `thunk ] delay
 
-(** Should we print hidden sort quality variables? *)
-let { Goptions.get = print_sort_quality } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Sort";"Qualities"]
-    ~value:true
-    ()
-
 (** If true, prints local context of evars, whatever print_arguments *)
 let print_evar_arguments = ref false
 
@@ -391,7 +384,7 @@ let detype_sort sigma = function
        else glob_Type_sort)
   | QSort (q, u) ->
     if !PrintingFlags.print_universes then
-      let q = if print_sort_quality () || Evd.is_rigid_qvar sigma q then
+      let q = if PrintingFlags.print_sort_quality () || Evd.is_rigid_qvar sigma q then
           Some (detype_qvar sigma q)
         else None
       in

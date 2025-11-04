@@ -25,7 +25,15 @@ let make_flag key v =
 let raw_print = make_flag ["Printing";"All"] false
 
 (* detyping + extern + a few extra things (eg About) *)
+(* XXX why does extern look at this flag? *)
 let print_universes = make_flag ["Printing";"Universes"] false
+
+(* detyping *)
+let { Goptions.get = print_sort_quality } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Sort";"Qualities"]
+    ~value:true
+    ()
 
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
