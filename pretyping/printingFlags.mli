@@ -29,6 +29,8 @@ val print_matching : unit -> bool
 
 val print_primproj_params : unit -> bool
 
+val print_unfolded_primproj_asmatch : unit -> bool
+
 val print_coercions : bool ref
 
 val print_parentheses : bool ref

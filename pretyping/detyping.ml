@@ -287,12 +287,6 @@ module PrintingCasesLet =
 module PrintingIf  = Goptions.MakeRefTable(PrintingCasesIf)
 module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
-let { Goptions.get = print_unfolded_primproj_asmatch } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Unfolded";"Projection";"As";"Match"]
-    ~value:false
-    ()
-
 let { Goptions.get = print_match_paramunivs } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Match";"All";"Subterms"]
@@ -853,7 +847,7 @@ and detype_r d flags avoid env sigma t =
         (Array.map_to_list (detype d flags avoid env sigma) args)
     | Const (sp,u) -> GRef (GlobRef.ConstRef sp, detype_instance sigma u)
     | Proj (p,_,c) ->
-      if Projection.unfolded p && print_unfolded_primproj_asmatch () then
+      if Projection.unfolded p && PrintingFlags.print_unfolded_primproj_asmatch () then
         let c = detype d flags avoid env sigma c in
         let id = Projection.label p in
         let nargs, parg =

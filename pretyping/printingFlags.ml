@@ -73,6 +73,13 @@ let { Goptions.get = print_primproj_params } =
     ~value:false
     ()
 
+(* detyping *)
+let { Goptions.get = print_unfolded_primproj_asmatch } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Unfolded";"Projection";"As";"Match"]
+    ~value:false
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 
