@@ -35,21 +35,11 @@ module NamedDecl = Context.Named.Declaration
 (* Translation from glob_constr to front constr *)
 
 (**********************************************************************)
-(* Parametrization                                                    *)
-
-(* This tells to skip types if a variable has this type by default *)
-let { Goptions.get = print_use_implicit_types } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Use";"Implicit";"Types"]
-    ~value:true
-    ()
-
-(**********************************************************************)
 
 let hole = CAst.make @@ CHole (None)
 
 let is_reserved_type na t =
-  not !PrintingFlags.raw_print && print_use_implicit_types () &&
+  not !PrintingFlags.raw_print && PrintingFlags.print_use_implicit_types () &&
   match na with
   | Anonymous -> false
   | Name id ->

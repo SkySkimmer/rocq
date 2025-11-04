@@ -37,3 +37,6 @@ val print_no_symbol : bool ref
 
 (** Print primitive tokens, like strings *)
 val print_raw_literal : bool ref
+
+(** This tells to skip types if a variable has this type by default *)
+val print_use_implicit_types : unit -> bool

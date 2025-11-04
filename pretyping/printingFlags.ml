@@ -61,3 +61,10 @@ let () =
 
 (* extern *)
 let print_raw_literal = make_flag ["Printing";"Raw";"Literals"] false
+
+(* extern *)
+let { Goptions.get = print_use_implicit_types } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Use";"Implicit";"Types"]
+    ~value:true
+    ()
