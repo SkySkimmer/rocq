@@ -87,12 +87,9 @@ let with_full_print f a =
   and old_contextual_implicit_args = Impargs.is_contextual_implicit_args () in
   let old_rawprint = !PrintingFlags.raw_print in
   let old_printuniverses = !PrintingFlags.print_universes in
-  let old_printallowmatchdefaultclause =
-    Detyping.print_allow_match_default_clause ()
-  in
+  let old_printallowmatchdefaultclause = !PrintingFlags.print_allow_match_default_clause in
   PrintingFlags.print_universes := true;
-  Goptions.set_bool_option_value Detyping.print_allow_match_default_opt_name
-    false;
+  PrintingFlags.print_allow_match_default_clause := false;
   PrintingFlags.raw_print := true;
   Impargs.make_implicit_args false;
   Impargs.make_strict_implicit_args false;
@@ -105,8 +102,7 @@ let with_full_print f a =
     Impargs.make_contextual_implicit_args old_contextual_implicit_args;
     PrintingFlags.raw_print := old_rawprint;
     PrintingFlags.print_universes := old_printuniverses;
-    Goptions.set_bool_option_value Detyping.print_allow_match_default_opt_name
-      old_printallowmatchdefaultclause;
+    PrintingFlags.print_allow_match_default_clause := old_printallowmatchdefaultclause;
     Dumpglob.pop_output ();
     res
   with reraise ->
@@ -115,8 +111,7 @@ let with_full_print f a =
     Impargs.make_contextual_implicit_args old_contextual_implicit_args;
     PrintingFlags.raw_print := old_rawprint;
     PrintingFlags.print_universes := old_printuniverses;
-    Goptions.set_bool_option_value Detyping.print_allow_match_default_opt_name
-      old_printallowmatchdefaultclause;
+    PrintingFlags.print_allow_match_default_clause := old_printallowmatchdefaultclause;
     Dumpglob.pop_output ();
     raise reraise
 

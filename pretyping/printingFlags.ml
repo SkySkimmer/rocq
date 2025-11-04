@@ -101,6 +101,9 @@ let { Goptions.get = print_factorize_match_patterns } =
     ~value:true
     ()
 
+(* detyping *)
+let print_allow_match_default_clause = make_flag ["Printing";"Allow";"Match";"Default";"Clause"] true
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 

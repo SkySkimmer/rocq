@@ -397,14 +397,6 @@ let lookup_index_as_renamed env sigma t n =
 (**********************************************************************)
 (* Factorization of match patterns *)
 
-let print_allow_match_default_opt_name =
-  ["Printing";"Allow";"Match";"Default";"Clause"]
-let { Goptions.get = print_allow_match_default_clause } =
-  Goptions.declare_bool_option_and_ref
-    ~key:print_allow_match_default_opt_name
-    ~value:true
-    ()
-
 let rec join_eqns (ids,rhs as x) patll = function
   | ({CAst.loc; v=(ids',patl',rhs')} as eqn')::rest ->
      if not !PrintingFlags.raw_print && PrintingFlags.print_factorize_match_patterns () &&
@@ -453,7 +445,7 @@ let factorize_eqns eqns =
   let eqns = aux [] (List.rev eqns) in
   let mk_anon patl = List.map (fun _ -> DAst.make @@ PatVar Anonymous) patl in
   let open CAst in
-  if not !PrintingFlags.raw_print && print_allow_match_default_clause () && eqns <> [] then
+  if not !PrintingFlags.raw_print && !PrintingFlags.print_allow_match_default_clause && eqns <> [] then
     match select_default_clause eqns with
     (* At least two clauses and the last one is disjunctive with no variables *)
     | Some {loc=gloc;v=([],patl::_::_,rhs)}, (_::_ as eqns) ->

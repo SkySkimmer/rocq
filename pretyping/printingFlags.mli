@@ -39,6 +39,10 @@ val print_relevances : unit -> bool
     variables in a disjunctive pattern *)
 val print_factorize_match_patterns : unit -> bool
 
+(** If this flag is true and the last non unique clause of a "match" is a
+    variable-free disjunctive pattern, turn it into a catch-call case *)
+val print_allow_match_default_clause : bool ref
+
 val print_coercions : bool ref
 
 val print_parentheses : bool ref
