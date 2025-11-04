@@ -59,13 +59,6 @@ let without_symbols f = Flags.with_option PrintingFlags.print_no_symbol f
 (**********************************************************************)
 (* Control printing of records *)
 
-(* Set Record Printing flag *)
-let { Goptions.get = get_record_print } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Records"]
-    ~value:true
-    ()
-
 let is_record indsp =
   try
     let _ = Structure.find (Global.env ()) indsp in
@@ -318,7 +311,7 @@ let extern_record_pattern cstrsp args =
       ()
     else if PrintingConstructor.active (fst cstrsp) then
       raise_notrace Exit
-    else if not (get_record_print ()) then
+    else if not (PrintingFlags.get_record_print ()) then
       raise_notrace Exit;
     let rec ip projs args acc =
       match projs, args with
@@ -600,7 +593,7 @@ let extern_record ref args =
       ()
     else if PrintingConstructor.active (fst cstrsp) then
       raise_notrace Exit
-    else if not (get_record_print ()) then
+    else if not (PrintingFlags.get_record_print ()) then
       raise_notrace Exit;
     let projs = struc.Structure.projections in
     let rec cut args n =

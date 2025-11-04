@@ -40,3 +40,5 @@ val print_raw_literal : bool ref
 
 (** This tells to skip types if a variable has this type by default *)
 val print_use_implicit_types : unit -> bool
+
+val get_record_print : unit -> bool

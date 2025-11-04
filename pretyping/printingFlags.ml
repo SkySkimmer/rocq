@@ -68,3 +68,10 @@ let { Goptions.get = print_use_implicit_types } =
     ~key:["Printing";"Use";"Implicit";"Types"]
     ~value:true
     ()
+
+(* extern *)
+let { Goptions.get = get_record_print } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Records"]
+    ~value:true
+    ()
