@@ -61,8 +61,6 @@ val detype_closed_glob : ?isgoal:bool -> ?avoid:'g Namegen.Generator.input -> en
 val lookup_name_as_displayed  : env -> evar_map -> constr -> Id.t -> int option
 val lookup_index_as_renamed : env -> evar_map -> constr -> int -> int option
 
-val synthetize_type : unit -> bool
-
 module PrintingInductiveMake :
   functor (_ : sig
     val encode : Environ.env -> Libnames.qualid -> Names.inductive

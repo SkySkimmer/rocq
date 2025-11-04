@@ -52,6 +52,13 @@ let { Goptions.get = fast_name_generation } =
     ~value:false
     ()
 
+(* detyping *)
+let { Goptions.get = synthetize_type } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Synth"]
+    ~value:true
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 

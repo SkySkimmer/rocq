@@ -287,14 +287,6 @@ module PrintingCasesLet =
 module PrintingIf  = Goptions.MakeRefTable(PrintingCasesIf)
 module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
-(* Flags.for printing or not wildcard and synthetisable types *)
-
-let { Goptions.get = synthetize_type } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Synth"]
-    ~value:true
-    ()
-
 let { Goptions.get = reverse_matching } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Matching"]
@@ -635,7 +627,7 @@ let get_cstr_tags env ind bl =
     Array.map map bl
 
 let detype_case computable detype detype_eqns avoid env sigma (ci, univs, params, p, iv, c, bl) =
-  let synth_type = synthetize_type () in
+  let synth_type = PrintingFlags.synthetize_type () in
   let tomatch = detype c in
   let tomatch =
     if not (print_match_paramunivs ()) then tomatch
