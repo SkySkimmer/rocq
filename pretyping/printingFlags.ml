@@ -32,3 +32,7 @@ let print_coercions = make_flag ["Printing";"Coercions"] false
 
 (* extern + ppconstr *)
 let print_parentheses = make_flag ["Printing";"Parentheses"] false
+
+(* constant for now, TODO expose as a new option *)
+(* extern *)
+let print_implicits_explicit_args () = false

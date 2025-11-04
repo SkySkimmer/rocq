@@ -16,3 +16,9 @@ val print_universes : bool ref
 val print_coercions : bool ref
 
 val print_parentheses : bool ref
+
+(** When [print_implicits] is on then [print_implicits_explicit_args]
+    tells how implicit args are printed. If on, implicit args are
+    printed with the form (id:=arg) otherwise arguments are printed
+    normally and the function is prefixed by "@". *)
+val print_implicits_explicit_args : unit -> bool

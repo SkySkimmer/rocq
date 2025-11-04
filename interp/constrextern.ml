@@ -43,7 +43,6 @@ module NamedDecl = Context.Named.Declaration
    with the form (id:=arg) otherwise arguments are printed normally and
    the function is prefixed by "@" *)
 let print_implicits = ref false
-let print_implicits_explicit_args = ref false
 
 (* Tells if implicit arguments not known to be inferable from a rigid
    position are systematically printed *)
@@ -587,7 +586,7 @@ let adjust_implicit_arguments inctx n args impl =
         let tail = exprec (args,impl) in
         let visible =
           !PrintingFlags.raw_print ||
-          (!print_implicits && !print_implicits_explicit_args) ||
+          (!print_implicits && PrintingFlags.print_implicits_explicit_args()) ||
           (is_needed_for_correct_partial_application tail imp) ||
           (!print_implicits_defensive &&
            (not (is_inferable_implicit inctx n imp) || !Flags.beautify) &&
@@ -674,7 +673,7 @@ let extern_applied_ref inctx impl (cf,f) us args =
   try
     if not !Constrintern.parsing_explicit &&
        ((!PrintingFlags.raw_print ||
-         (!print_implicits && not !print_implicits_explicit_args)) &&
+         (!print_implicits && not (PrintingFlags.print_implicits_explicit_args()))) &&
         List.exists is_status_implicit impl)
     then raise Expl;
     let impl = if !Constrintern.parsing_explicit then [] else impl in
