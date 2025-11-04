@@ -66,6 +66,13 @@ let { Goptions.get = print_matching } =
     ~value:true
     ()
 
+(* detyping *)
+let { Goptions.get = print_primproj_params } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Primitive";"Projection";"Parameters"]
+    ~value:false
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 

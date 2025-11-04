@@ -287,12 +287,6 @@ module PrintingCasesLet =
 module PrintingIf  = Goptions.MakeRefTable(PrintingCasesIf)
 module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
-let { Goptions.get = print_primproj_params } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Primitive";"Projection";"Parameters"]
-    ~value:false
-    ()
-
 let { Goptions.get = print_unfolded_primproj_asmatch } =
   Goptions.declare_bool_option_and_ref
     ~key:["Printing";"Unfolded";"Projection";"As";"Match"]
@@ -890,7 +884,7 @@ and detype_r d flags avoid env sigma t =
                 (args @ [detype d flags avoid env sigma c]))
         in
         if !Flags.in_debugger || !Flags.in_ml_toplevel
-           || not (print_primproj_params ())
+           || not (PrintingFlags.print_primproj_params ())
         then noparams ()
         else begin
           try
