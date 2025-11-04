@@ -69,8 +69,6 @@ let is_reserved_type na t =
 
 (**********************************************************************)
 (* Turning notations and scopes on and off for printing *)
-(* This governs printing of projections using the dot notation symbols *)
-let print_projections = ref false
 
 let without_symbols f = Flags.with_option print_no_symbol f
 
@@ -539,7 +537,7 @@ let is_gvar id c = match DAst.get c with
 | _ -> false
 
 let is_projection nargs r =
-  if not !Flags.in_debugger && not !PrintingFlags.raw_print && !print_projections then
+  if not !Flags.in_debugger && not !PrintingFlags.raw_print && !PrintingFlags.print_projections then
     try
       match r with
       | GlobRef.ConstRef c ->
@@ -681,7 +679,7 @@ let extern_applied_ref inctx impl (cf,f) us args =
   (* A [@f args] node *)
     let args = List.map Lazy.force args in
     match is_projection (List.length args) cf with
-    | Some n when !print_projections ->
+    | Some n when !PrintingFlags.print_projections ->
        let args = List.map (fun c -> (c,None)) args in
        let args1, args2 = List.chop n args in
        let (c1,_), args1 = List.sep_last args1 in

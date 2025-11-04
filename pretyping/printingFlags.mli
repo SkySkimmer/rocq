@@ -28,3 +28,6 @@ val print_implicits : bool ref
 (** Tells if implicit arguments not known to be inferable from a rigid
     position are systematically printed *)
 val print_implicits_defensive : bool ref
+
+(** This governs printing of projections using the dot notation symbols *)
+val print_projections : bool ref

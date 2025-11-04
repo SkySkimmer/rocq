@@ -42,3 +42,6 @@ let print_implicits = make_flag ["Printing";"Implicit"] false
 
 (* extern *)
 let print_implicits_defensive = make_flag ["Printing";"Implicit";"Defensive"] true
+
+(* extern *)
+let print_projections = make_flag ["Printing";"Projections"] false
