@@ -26,3 +26,6 @@ let raw_print = make_flag ["Printing";"All"] false
 
 (* detyping + extern + a few extra things (eg About) *)
 let print_universes = make_flag ["Printing";"Universes"] false
+
+(* extern *)
+let print_coercions = make_flag ["Printing";"Coercions"] false

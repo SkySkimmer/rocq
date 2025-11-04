@@ -49,9 +49,6 @@ let print_implicits_explicit_args = ref false
    position are systematically printed *)
 let print_implicits_defensive = ref true
 
-(* This forces printing of coercions *)
-let print_coercions = ref false
-
 (* This forces printing of parentheses even when
    it is implied by associativity/precedence *)
 let print_parentheses = ref false
@@ -753,7 +750,7 @@ let match_coercion_app c = match DAst.get c with
 
 let remove_one_coercion inctx c =
   try match match_coercion_app c with
-  | Some (loc,r,args) when not (!PrintingFlags.raw_print || !print_coercions) ->
+  | Some (loc,r,args) when not (!PrintingFlags.raw_print || !PrintingFlags.print_coercions) ->
       let nargs = List.length args in
       (match Coercionops.hide_coercion r with
           | Some nparams when
