@@ -19,6 +19,8 @@ val print_sort_quality : unit -> bool
 (** If true, prints full local context of evars *)
 val print_evar_arguments : bool ref
 
+val print_wildcard : unit -> bool
+
 val print_coercions : bool ref
 
 val print_parentheses : bool ref

@@ -289,12 +289,6 @@ module PrintingLet = Goptions.MakeRefTable(PrintingCasesLet)
 
 (* Flags.for printing or not wildcard and synthetisable types *)
 
-let { Goptions.get = force_wildcard } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Wildcard"]
-    ~value:true
-    ()
-
 let { Goptions.get = fast_name_generation } =
   Goptions.declare_bool_option_and_ref
     ~key:["Fast";"Name";"Printing"]
@@ -528,7 +522,7 @@ let factorize_eqns eqns =
 
 let update_name sigma na ((_,(e,_)),c) =
   match na with
-  | Name _ when force_wildcard () && noccurn sigma (List.index Name.equal na e) c ->
+  | Name _ when PrintingFlags.print_wildcard () && noccurn sigma (List.index Name.equal na e) c ->
       Anonymous
   | _ ->
       na
@@ -1016,7 +1010,7 @@ and detype_eqn d flags avoid env sigma u pms constr br =
   let ctx, body = RobustExpand.branch (snd env) sigma constr u pms br in
   let branch = EConstr.it_mkLambda_or_LetIn body ctx in
   let make_pat decl avoid env b ids =
-    if force_wildcard () && not !Flags.in_debugger && noccurn sigma 1 b then
+    if PrintingFlags.print_wildcard () && not !Flags.in_debugger && noccurn sigma 1 b then
       DAst.make @@ PatVar Anonymous,avoid,(add_name (set_name Anonymous decl) env),ids
     else
       let na,avoid' = compute_name sigma ~let_in:false ~pattern:true flags avoid env (get_name decl) b in

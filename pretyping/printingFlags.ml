@@ -38,6 +38,13 @@ let { Goptions.get = print_sort_quality } =
 (* detyping *)
 let print_evar_arguments = make_flag ["Printing";"Existential";"Instances"] false
 
+(* detyping *)
+let { Goptions.get = print_wildcard } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Wildcard"]
+    ~value:true
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 
