@@ -397,12 +397,6 @@ let lookup_index_as_renamed env sigma t n =
 (**********************************************************************)
 (* Factorization of match patterns *)
 
-let { Goptions.get = print_factorize_match_patterns } =
-  Goptions.declare_bool_option_and_ref
-    ~key:["Printing";"Factorizable";"Match";"Patterns"]
-    ~value:true
-    ()
-
 let print_allow_match_default_opt_name =
   ["Printing";"Allow";"Match";"Default";"Clause"]
 let { Goptions.get = print_allow_match_default_clause } =
@@ -413,7 +407,7 @@ let { Goptions.get = print_allow_match_default_clause } =
 
 let rec join_eqns (ids,rhs as x) patll = function
   | ({CAst.loc; v=(ids',patl',rhs')} as eqn')::rest ->
-     if not !PrintingFlags.raw_print && print_factorize_match_patterns () &&
+     if not !PrintingFlags.raw_print && PrintingFlags.print_factorize_match_patterns () &&
         List.eq_set Id.equal ids ids' && glob_constr_eq rhs rhs'
      then
        join_eqns x (patl'::patll) rest

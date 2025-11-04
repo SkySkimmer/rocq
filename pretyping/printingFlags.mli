@@ -35,6 +35,10 @@ val print_match_paramunivs : unit -> bool
 
 val print_relevances : unit -> bool
 
+(** If true, contract branches with same r.h.s. and same matching
+    variables in a disjunctive pattern *)
+val print_factorize_match_patterns : unit -> bool
+
 val print_coercions : bool ref
 
 val print_parentheses : bool ref

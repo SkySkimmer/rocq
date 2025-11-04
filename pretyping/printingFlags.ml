@@ -94,6 +94,13 @@ let { Goptions.get = print_relevances } =
     ~value:false
     ()
 
+(* detyping *)
+let { Goptions.get = print_factorize_match_patterns } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Printing";"Factorizable";"Match";"Patterns"]
+    ~value:true
+    ()
+
 (* extern *)
 let print_coercions = make_flag ["Printing";"Coercions"] false
 

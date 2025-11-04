@@ -21,10 +21,6 @@ type _ delay =
 | Now : 'a delay
 | Later : [ `thunk ] delay
 
-(** If true, contract branches with same r.h.s. and same matching
-    variables in a disjunctive pattern *)
-val print_factorize_match_patterns : unit -> bool
-
 (** If this flag is true and the last non unique clause of a "match" is a
     variable-free disjunctive pattern, turn it into a catch-call case *)
 val print_allow_match_default_clause : unit -> bool
