@@ -166,7 +166,6 @@ let rec pr_explicit_aux env sigma t1 t2 = function
     pr ct1, pr ct2
 
 let explicit_flags =
-  let open Constrextern in
   let open PrintingFlags in
   [ []; (* First, try with the current flags *)
     [print_implicits]; (* Then with implicit *)

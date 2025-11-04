@@ -45,3 +45,16 @@ let print_implicits_defensive = make_flag ["Printing";"Implicit";"Defensive"] tr
 
 (* extern *)
 let print_projections = make_flag ["Printing";"Projections"] false
+
+(* extern *)
+let print_no_symbol = ref false
+
+let () =
+  (* Printing Notations uses a negated ref for convenience in Himsg.explicit_flags *)
+  Goptions.declare_bool_option
+    { optstage = Summary.Stage.Interp;
+      optdepr  = None;
+      optkey   = ["Printing";"Notations"];
+      optread  = (fun () -> not !print_no_symbol);
+      optwrite = (fun b ->  print_no_symbol := not b);
+    }

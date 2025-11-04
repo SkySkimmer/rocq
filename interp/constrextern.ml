@@ -37,9 +37,6 @@ module NamedDecl = Context.Named.Declaration
 (**********************************************************************)
 (* Parametrization                                                    *)
 
-(* This suppresses printing of notations *)
-let print_no_symbol = ref false
-
 (* This tells to skip types if a variable has this type by default *)
 let { Goptions.get = print_use_implicit_types } =
   Goptions.declare_bool_option_and_ref
@@ -70,7 +67,7 @@ let is_reserved_type na t =
 (**********************************************************************)
 (* Turning notations and scopes on and off for printing *)
 
-let without_symbols f = Flags.with_option print_no_symbol f
+let without_symbols f = Flags.with_option PrintingFlags.print_no_symbol f
 
 (**********************************************************************)
 (* Control printing of records *)
@@ -369,7 +366,7 @@ let rec extern_cases_pattern_in_scope ((custom,(lev_after:int option)),scopes as
           (insert_pat_alias ?loc (insert_pat_delimiters ?loc (CAst.make ?loc @@ CPatPrim p) key) na)
   with No_match ->
     try
-      if !Flags.in_debugger || !PrintingFlags.raw_print || !print_no_symbol then raise No_match;
+      if !Flags.in_debugger || !PrintingFlags.raw_print || !PrintingFlags.print_no_symbol then raise No_match;
       extern_notation_pattern allscopes vars pat
         (uninterp_cases_pattern_notations (Global.env ()) pat)
     with No_match ->
@@ -509,7 +506,7 @@ let extern_ind_pattern_in_scope (custom,scopes as allscopes) vars ind args =
     CAst.make @@ CPatCstr (c, Some args, [])
   else
     try
-      if !PrintingFlags.raw_print || !print_no_symbol || Inductiveops.inductive_has_local_defs (Global.env()) ind
+      if !PrintingFlags.raw_print || !PrintingFlags.print_no_symbol || Inductiveops.inductive_has_local_defs (Global.env()) ind
         then raise No_match;
       extern_notation_ind_pattern allscopes vars ind args
           (uninterp_ind_pattern_notations (Global.env ()) ind)
@@ -1269,7 +1266,7 @@ and extern_notations depth inctx scopes eenv nargs t =
   if !PrintingFlags.raw_print then raise No_match;
   try extern_possible_prim_token scopes t
   with No_match ->
-    if !print_no_symbol then raise No_match;
+    if !PrintingFlags.print_no_symbol then raise No_match;
     let t = flatten_application t in
     extern_notation depth inctx scopes eenv t (filter_enough_applied nargs (uninterp_notations (Global.env ()) t))
 

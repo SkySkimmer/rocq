@@ -1944,14 +1944,6 @@ let () =
   declare_bool_option
     { optstage = Summary.Stage.Interp;
       optdepr  = None;
-      optkey   = ["Printing";"Notations"];
-      optread  = (fun () -> not !Constrextern.print_no_symbol);
-      optwrite = (fun b ->  Constrextern.print_no_symbol := not b) }
-
-let () =
-  declare_bool_option
-    { optstage = Summary.Stage.Interp;
-      optdepr  = None;
       optkey   = ["Printing";"Raw";"Literals"];
       optread  = (fun () -> !Constrextern.print_raw_literal);
       optwrite = (fun b ->  Constrextern.print_raw_literal := b) }

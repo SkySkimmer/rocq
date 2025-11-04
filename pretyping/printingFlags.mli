@@ -31,3 +31,6 @@ val print_implicits_defensive : bool ref
 
 (** This governs printing of projections using the dot notation symbols *)
 val print_projections : bool ref
+
+(** Negated version of Printing Notations (negated for convenience in Himsg.explicit_flags)  *)
+val print_no_symbol : bool ref
