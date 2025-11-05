@@ -2,7 +2,7 @@
      : Type
 foo Set nat
      : Type
-! S
+foo Type@{s ; _} S
      : Type
 File "./output/UnivNotations.v", line 20, characters 13-14:
 The command has indeed failed with message:

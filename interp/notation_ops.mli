@@ -83,7 +83,7 @@ val pr_notation_info :
 
 exception No_match
 
-val match_notation_constr : print_parentheses:bool -> print_univ:bool -> 'a glob_constr_g -> vars:Id.Set.t -> interpretation ->
+val match_notation_constr : print_parentheses:bool -> 'a glob_constr_g -> vars:Id.Set.t -> interpretation ->
       ((Id.Set.t * 'a glob_constr_g) * extended_subscopes) list *
       ((Id.Set.t * 'a glob_constr_g list) * extended_subscopes) list *
       ((Id.Set.t * 'a cases_pattern_disjunction_g) * extended_subscopes) list *

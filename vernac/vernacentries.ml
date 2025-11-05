@@ -2051,8 +2051,8 @@ let () =
     { optstage = Summary.Stage.Interp;
       optdepr  = None;
       optkey   = ["Printing";"Universes"];
-      optread  = (fun () -> !Constrextern.print_universes);
-      optwrite = (fun b -> Constrextern.print_universes:=b) }
+      optread  = (fun () -> !Detyping.print_universes);
+      optwrite = (fun b -> Detyping.print_universes:=b) }
 
 let () =
   (* no summary: handled as part of the debug state *)

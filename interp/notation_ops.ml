@@ -1428,7 +1428,6 @@ let add_meta_term x metas = (x,NtnTypeConstr)::metas
 
 type match_flags = {
   print_parentheses : bool;
-  print_universes : bool;
 }
 
 let match_termlist flags match_fun alp metas sigma rest x y iter termin revert =
@@ -1585,11 +1584,12 @@ let rec match_ inner u alp metas sigma a1 a2 =
     if not (Option.equal cast_kind_eq k1 k2) then raise No_match;
     match_in u alp metas sigma t1 t2
 
-  (* Next pair of lines useful only if not coming from detyping *)
-  | GSort (None, UNamed [(GSProp|GProp|GSet),0]), NSort (None, UAnonymous _) -> raise No_match
-  | GSort _, NSort (None, UAnonymous _) when not u.print_universes -> sigma
-
+  (* [NSort (None, UAnonymous _)] from "Type" only matches anonymous glob sorts.
+     This means it never matches the result of detyping a sort when Printing Universes is on.
+     Is that really what we want?
+     (Behaviour deliberately introduced in a38fbefca61f3392efe0ba98adfbae138022cce4 AFAICT) *)
   | GSort s1, NSort s2 when glob_sort_eq s1 s2 -> sigma
+
   | GInt i1, NInt i2 when Uint63.equal i1 i2 -> sigma
   | GFloat f1, NFloat f2 when Float64.equal f1 f2 -> sigma
   | GString s1, NString s2 when Pstring.equal s1 s2 -> sigma
@@ -1734,9 +1734,9 @@ let group_by_type ids (terms,termlists,binders,binderlists) =
        (terms',termlists',binders',(bl,scl)::binderlists'))
     ids ([],[],[],[])
 
-let match_notation_constr ~print_parentheses ~print_univ c ~vars (metas,pat) =
+let match_notation_constr ~print_parentheses c ~vars (metas,pat) =
   let metatyps = List.map (fun (id,(_,_,typ)) -> (id,typ)) metas in
-  let flags = { print_parentheses; print_universes = print_univ } in
+  let flags = { print_parentheses; } in
   let subst = match_ false flags {actualvars=vars;staticbinders=[];renaming=[]} metatyps ([],[],[],[]) c pat in
   group_by_type metas subst
 

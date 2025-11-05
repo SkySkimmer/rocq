@@ -303,7 +303,7 @@ let pr_universe_instance evd inst =
   str "@{" ++ UVars.Instance.pr prqvar prlev inst ++ str "}"
 
 let pr_puniverses f env sigma (c,u) =
-  if !Constrextern.print_universes
+  if !Detyping.print_universes
   then f env c ++ pr_universe_instance sigma u
   else f env c
 

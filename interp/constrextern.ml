@@ -56,9 +56,6 @@ let print_coercions = ref false
    it is implied by associativity/precedence *)
 let print_parentheses = ref false
 
-(* This forces printing universe names of Type{.} *)
-let print_universes = Detyping.print_universes
-
 (* This suppresses printing of notations *)
 let print_no_symbol = ref false
 
@@ -83,7 +80,9 @@ let is_reserved_type na t =
   | Name id ->
     try
       let pat = Reserve.find_reserved_type id in
-      let _ = match_notation_constr ~print_parentheses:true ~print_univ:false t ~vars:Id.Set.empty ([],pat) in
+      let _ : _ * _ * _ * _ =
+        match_notation_constr ~print_parentheses:true t ~vars:Id.Set.empty ([],pat)
+      in
       true
     with Not_found | No_match -> false
 
@@ -92,7 +91,6 @@ let is_reserved_type na t =
 (* This governs printing of projections using the dot notation symbols *)
 let print_projections = ref false
 
-let with_universes f = Flags.with_option print_universes f
 let without_symbols f = Flags.with_option print_no_symbol f
 
 (**********************************************************************)
@@ -916,24 +914,12 @@ let extern_glob_sort uvars (q, l) =
   Option.map (extern_glob_qvar uvars) q,
   map_glob_sort_gen (List.map (on_fst (extern_glob_sort_name uvars))) l
 
-(** wrapper to handle print_universes: don't forget small univs *)
-let extern_glob_sort uvars (s:glob_sort) =
-  let really_extern = !print_universes || Option.has_some (fst s) || match snd s with
-    | UNamed [s, 0] -> begin match s with
-        | GSet | GProp | GSProp -> true
-        | GUniv _ | GLocalUniv _ | GRawUniv _ -> false
-      end
-    | _ -> false
-  in
-  if really_extern then extern_glob_sort uvars s
-  else Constrexpr_ops.expr_Type_sort
-
 let extern_instance uvars = function
-  | Some (ql,ul) when !print_universes ->
+  | Some (ql,ul) ->
     let ql = List.map (extern_glob_quality uvars) ql in
     let ul = List.map (map_glob_sort_gen (extern_glob_sort_name uvars)) ul in
     Some (ql,ul)
-  | _ -> None
+  | None -> None
 
 let extern_ref {vars; uvars} ref us =
   extern_global (select_stronger_impargs (implicits_of_global ref))
@@ -1349,8 +1335,7 @@ and extern_notation depth inctx ((custom,(lev_after: int option)),scopes as alls
           | AppBoundedNotation _ -> raise No_match in
         (* Try matching ... *)
         let terms,termlists,binders,binderlists =
-          match_notation_constr ~print_parentheses:!print_parentheses ~print_univ:(!print_universes)
-            t ~vars:eenv.vars pat
+          match_notation_constr ~print_parentheses:!print_parentheses t ~vars:eenv.vars pat
         in
         let lev_after = if List.is_empty args then lev_after else Some Notation.app_level in
         (* Try externing extra args... *)

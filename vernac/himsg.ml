@@ -167,6 +167,7 @@ let rec pr_explicit_aux env sigma t1 t2 = function
 
 let explicit_flags =
   let open Constrextern in
+  let open Detyping in
   [ []; (* First, try with the current flags *)
     [print_implicits]; (* Then with implicit *)
     [print_universes]; (* Then with universes *)
@@ -240,7 +241,7 @@ let explain_elim_arity env sigma ind c okinds =
     | None | Some AlwaysSquashed -> pp ()
     | Some (SometimesSquashed _) ->
       (* universe instance matters, so print it regardless of Printing Universes *)
-      Flags.with_option Constrextern.print_universes pp ()
+      Flags.with_option Detyping.print_universes pp ()
   in
   let pc = Option.map (pr_leconstr_env env sigma) c in
   let msg = match okinds with
@@ -248,7 +249,7 @@ let explain_elim_arity env sigma ind c okinds =
     | Some sp ->
       let ppt ?(ppunivs=false) () =
         let pp () = pr_leconstr_env env sigma (mkSort (ESorts.make sp)) in
-        if ppunivs then Flags.with_option Constrextern.print_universes pp ()
+        if ppunivs then Flags.with_option Detyping.print_universes pp ()
         else pp ()
       in
       let env = Environ.set_qualities (QGraph.qvar_domain @@ Evd.elim_graph sigma) env in
@@ -560,7 +561,7 @@ let explain_ill_formed_fix_body env sigma names i = function
           | Anonymous -> str "the " ++ pr_nth i ++ str " definition" in
      str "Recursive call to " ++ called ++ str " has not enough arguments"
   | FixpointOnNonEliminable (s, s') ->
-  let pr_sort u = quote @@ Flags.with_option Constrextern.print_universes (Printer.pr_sort sigma) u in
+  let pr_sort u = quote @@ Flags.with_option Detyping.print_universes (Printer.pr_sort sigma) u in
     fmt "Cannot define a fixpoint@ with principal argument living in sort %t@ \
          to produce a value in sort %t@ because %t does not eliminate to %t"
       (fun () -> pr_sort s)
@@ -1526,7 +1527,7 @@ let error_large_non_prop_inductive_not_in_type () =
 
 let error_inductive_missing_constraints env (us,ind_univ) =
   let sigma = Evd.from_env env in
-  let pr_sort u = Flags.with_option Constrextern.print_universes (Printer.pr_sort sigma) u in
+  let pr_sort u = Flags.with_option Detyping.print_universes (Printer.pr_sort sigma) u in
   str "Missing universe constraint declared for inductive type:" ++ spc()
   ++ v 0 (prlist_with_sep spc (fun u ->
       hov 0 (pr_sort u ++ str " <= " ++ pr_sort ind_univ))

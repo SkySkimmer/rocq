@@ -59,7 +59,6 @@ val print_implicits : bool ref
 val print_implicits_defensive : bool ref
 val print_coercions : bool ref
 val print_parentheses : bool ref
-val print_universes : bool ref
 val print_no_symbol : bool ref
 val print_projections : bool ref
 val print_raw_literal : bool ref
@@ -82,9 +81,6 @@ val get_extern_reference :
     which one is wrong? We should turn this kind of state into an
     explicit argument.
 *)
-
-(** This forces printing universe names of Type\{.\} *)
-val with_universes : ('a -> 'b) -> 'a -> 'b
 
 (** This suppresses printing of primitive tokens and notations *)
 val without_symbols : ('a -> 'b) -> 'a -> 'b
