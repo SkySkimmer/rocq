@@ -103,10 +103,10 @@ let process_universes env = function
   | Entries.Polymorphic_entry uctx ->
     (** [ctx] must contain local universes, such that it has no impact
         on the rest of the graph (up to transitivity). *)
-    let env = Environ.push_context ~strict:false uctx env in
     let inst, auctx = UVars.abstract_universes uctx in
+    let env = Environ.push_context ~strict:false (AbstractContext.repr auctx) env in
     let usubst = UVars.make_instance_subst inst in
-    env, usubst, inst, Polymorphic auctx
+    env, usubst, UVars.make_abstract_instance auctx, Polymorphic auctx
 
 let check_primitive_type env op_t u t =
   let inft = Typeops.type_of_prim_or_type env u op_t in
@@ -143,12 +143,12 @@ let infer_primitive env { prim_entry_type = utyp; prim_entry_content = p; } =
       in
       univs, typ
 
-    | Some (typ,univ_entry) ->
+    | Some (typ, univ_entry) ->
       let univ_entry = adjust_primitive_univ_entry p auctx univ_entry in
       let env, usubst, u, univs = process_universes env univ_entry in
+      let typ = Vars.subst_univs_level_constr usubst typ in
       let typ = (Typeops.infer_type env typ).utj_val in
       let () = check_primitive_type env p u typ in
-      let typ = Vars.subst_univs_level_constr usubst typ in
       univs, typ
   in
   let body = match p with
@@ -172,17 +172,17 @@ let infer_primitive env { prim_entry_type = utyp; prim_entry_content = p; } =
 
 let infer_symbol env { symb_entry_universes; symb_entry_unfold_fix; symb_entry_type } =
   let env, usubst, _, univs = process_universes env symb_entry_universes in
+  let symb_entry_type = Vars.subst_univs_level_constr usubst symb_entry_type in
   let j = Typeops.infer env symb_entry_type in
   let r = Typeops.assumption_of_judgment env j in
-  let t = Vars.subst_univs_level_constr usubst j.uj_val in
   {
     const_hyps = [];
     const_univ_hyps = Instance.empty;
     const_body = Symbol symb_entry_unfold_fix;
-    const_type = t;
+    const_type = j.uj_val;
     const_body_code = ();
     const_universes = univs;
-    const_relevance = UVars.subst_sort_level_relevance usubst r;
+    const_relevance = r;
     const_inline_code = false;
     const_typing_flags = Environ.typing_flags env;
   }
@@ -194,9 +194,10 @@ let make_univ_hyps = function
 
 let infer_parameter ~sec_univs env entry =
   let env, usubst, _, univs = process_universes env entry.parameter_entry_universes in
-  let j = Typeops.infer env entry.parameter_entry_type in
+  let typ = Vars.subst_univs_level_constr usubst entry.parameter_entry_type in
+  let j = Typeops.infer env typ in
   let r = Typeops.assumption_of_judgment env j in
-  let typ = Vars.subst_univs_level_constr usubst j.uj_val in
+  let typ = j.uj_val in
   let undef = Undef entry.parameter_entry_inline_code in
   let hyps = used_section_variables env entry.parameter_entry_secctx None typ in
   {
@@ -206,25 +207,27 @@ let infer_parameter ~sec_univs env entry =
     const_type = typ;
     const_body_code = ();
     const_universes = univs;
-    const_relevance = UVars.subst_sort_level_relevance usubst r;
+    const_relevance = r;
     const_inline_code = false;
     const_typing_flags = Environ.typing_flags env;
   }
 
 let infer_definition ~sec_univs env entry =
   let env, usubst, _, univs = process_universes env entry.definition_entry_universes in
-  let hbody = HConstr.of_constr env entry.definition_entry_body in
+  let body = Vars.subst_univs_level_constr usubst entry.definition_entry_body in
+  let hbody = HConstr.of_constr env body in
   let j = Typeops.infer_hconstr env hbody in
   let typ = match entry.definition_entry_type with
     | None ->
-      Vars.subst_univs_level_constr usubst j.uj_type
+      j.uj_type
     | Some t ->
+      let t = Vars.subst_univs_level_constr usubst t in
       let tj = Typeops.infer_type env t in
       let () = Typeops.check_cast env j DEFAULTcast tj in
-      Vars.subst_univs_level_constr usubst tj.utj_val
+      tj.utj_val
   in
-  let body = Vars.subst_univs_level_constr usubst j.uj_val in
-  let hbody = if body == j.uj_val then Some hbody else None in
+  let body = j.uj_val in
+  let hbody = Some hbody in
   let def = Def body in
   let hyps = used_section_variables env entry.definition_entry_secctx (Some body) typ in
   hbody, {
@@ -242,10 +245,11 @@ let infer_definition ~sec_univs env entry =
 (** Definition is opaque (Qed), so we delay the typing of its body. *)
 let infer_opaque ~sec_univs env entry =
   let env, usubst, _, univs = process_universes env entry.opaque_entry_universes in
-  let typj = Typeops.infer_type env entry.opaque_entry_type in
+  let typ = Vars.subst_univs_level_constr usubst entry.opaque_entry_type in
+  let typj = Typeops.infer_type env typ in
   let context = TyCtx (env, typj, entry.opaque_entry_secctx, usubst, univs) in
   let def = OpaqueDef () in
-  let typ = Vars.subst_univs_level_constr usubst typj.utj_val in
+  let typ = typj.utj_val in
   let hyps = used_section_variables env (Some entry.opaque_entry_secctx) None typ in
   {
     const_hyps = hyps;
@@ -254,7 +258,7 @@ let infer_opaque ~sec_univs env entry =
     const_type = typ;
     const_body_code = ();
     const_universes = univs;
-    const_relevance = UVars.subst_sort_level_relevance usubst @@ Sorts.relevance_of_sort typj.utj_type;
+    const_relevance = Sorts.relevance_of_sort typj.utj_type;
     const_inline_code = false;
     const_typing_flags = Environ.typing_flags env;
   }, context
@@ -269,13 +273,14 @@ let check_delayed (type a) (handle : a effect_handler) tyenv (body : a proof_out
        assert (UVars.is_empty_sort_subst usubst);
        push_context_set uctx env, Opaqueproof.PrivateMonomorphic uctx
     | Polymorphic _ ->
-       assert (Int.equal valid_signatures 0);
-       push_subgraph uctx env,
-       let private_univs = on_snd (subst_univs_level_constraints (snd usubst)) uctx in
-       Opaqueproof.PrivatePolymorphic private_univs
+       let () = assert (Int.equal valid_signatures 0) in
+       let uctx = on_snd (fun cst -> subst_univs_level_constraints (snd usubst) cst) uctx in
+       push_subgraph uctx env, Opaqueproof.PrivatePolymorphic uctx
   in
-  (* Note: non-trivial trusted side-effects only in monomorphic case *)
+  (* Note: non-trivial usubst only in polymorphic case *)
+  let body = Vars.subst_univs_level_constr usubst body in
   let hbody = HConstr.of_constr env body in
+  (* Note: non-trivial trusted side-effects only in monomorphic case *)
   let () =
     let eff_body, eff_env = skip_trusted_seff valid_signatures hbody env in
     let j = Typeops.infer_hconstr eff_env eff_body in
@@ -289,9 +294,8 @@ let check_delayed (type a) (handle : a effect_handler) tyenv (body : a proof_out
   in
   let declared' = check_section_variables env declared (Some body) tyj.utj_val in
   let () = assert (Id.Set.equal declared declared') in
-  (* Note: non-trivial usubst only in polymorphic case *)
-  let def = Vars.subst_univs_level_constr usubst (HConstr.self hbody) in
-  let hbody = if def == HConstr.self hbody then Some hbody else None in
+  let def = HConstr.self hbody in
+  let hbody = Some hbody in
   hbody, def, univs
 
 (*s Global and local constant declaration. *)
