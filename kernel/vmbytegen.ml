@@ -139,9 +139,13 @@ type comp_env = {
        reallocate the stack if we lack space. *)
   }
 
+type uinstance =
+| Global (* Treat all levels as globally bound *)
+| Bound of (int * int) (** Size of the local universe instance *)
+
 type glob_env = {
   env : Environ.env;
-  uinst_len : int * int; (** Size of the toplevel universe instance *)
+  uinstance : uinstance;
   mutable fun_code : instruction list; (** Code of closures *)
 }
 
@@ -319,16 +323,43 @@ let pos_instance r sz =
     in
     Kenvacc (r.offset + pos)
 
-let is_toplevel_inst env u =
-  UVars.eq_sizes env.uinst_len (UVars.Instance.length u)
+let is_toplevel_inst env u = match env.uinstance with
+| Global -> false
+| Bound inst  ->
+  UVars.eq_sizes inst (UVars.Instance.length u)
   && let qs, us = UVars.Instance.to_array u in
   Array.for_all_i (fun i q -> Sorts.Quality.equal q (Sorts.Quality.var i)) 0 qs
   && Array.for_all_i (fun i l -> Univ.Level.equal l (Univ.Level.var i)) 0 us
 
-let is_closed_inst u =
+let is_closed_inst env u = match env.uinstance with
+| Global -> true
+| Bound (qlen, ulen) ->
   let qs, us = UVars.Instance.to_array u in
-  Array.for_all (fun q -> Option.is_empty (Sorts.Quality.var_index q)) qs
-  && Array.for_all (fun l -> Option.is_empty (Univ.Level.var_index l)) us
+  let check len = function
+  | None -> true
+  | Some j ->
+    let () = assert (j < len) in
+    false
+  in
+  Array.for_all (fun q -> check qlen (Sorts.Quality.var_index q)) qs
+  && Array.for_all (fun l -> check ulen (Univ.Level.var_index l)) us
+
+let is_closed_sort env s = match env.uinstance with
+| Global -> true
+| Bound (qlen, ulen) ->
+  let check len = function
+  | None -> true
+  | Some j ->
+    let () = assert (j < len) in
+    false
+  in
+  match s with
+  | Sorts.Set | Sorts.Prop | Sorts.SProp -> true
+  | Sorts.Type u ->
+    Univ.Universe.for_all (fun (l, _) -> check ulen (Univ.Level.var_index l)) u
+  | Sorts.QSort (q, u) ->
+    check qlen (Sorts.QVar.var_index q)
+    && Univ.Universe.for_all (fun (l, _) -> check ulen (Univ.Level.var_index l)) u
 
 (*i  Examination of the continuation *)
 
@@ -574,19 +605,11 @@ let rec compile_lam env cenv lam sz cont =
     (* We represent universes as a global constant with local universes
        passed as the local universe instance, where we will substitute (after
        evaluation) [Var 0,...,Var n] with values of [arg0,...,argn] *)
-    let has_var = match s with
-    | Sorts.Set | Sorts.Prop | Sorts.SProp -> false
-    | Sorts.Type u ->
-      Univ.Universe.exists (fun (l, _) -> Option.has_some (Univ.Level.var_index l)) u
-    | Sorts.QSort (q, u) ->
-      Option.has_some (Sorts.QVar.var_index q)
-      || Univ.Universe.exists (fun (l, _) -> Option.has_some (Univ.Level.var_index l)) u
-    in
     let compile_instance cenv () sz cont =
       let () = set_max_stack_size cenv sz in
       pos_instance cenv sz :: cont
     in
-    if not has_var then
+    if is_closed_sort env s then
       compile_structured_constant cenv (Const_sort s) sz cont
     else
       comp_app compile_structured_constant compile_instance cenv
@@ -836,7 +859,7 @@ and compile_instance env cenv u sz cont =
   if is_toplevel_inst env u then
     (* Optimization: do not reallocate the same instance *)
     pos_instance cenv sz :: cont
-  else if is_closed_inst u then
+  else if is_closed_inst env u then
     (* Optimization: allocate closed instances globally *)
     compile_structured_constant cenv (Const_univ_instance u) sz cont
   else
@@ -897,7 +920,7 @@ let skip_suffix l =
   in
   match aux l with None -> [] | Some l -> l
 
-let compile ?universes:(universes=(0,0)) env sigma c =
+let compile ~uinstance env sigma c =
   Label.reset_label_counter ();
   let lam = lambda_of_constr env sigma c in
   let params, body = decompose_Llam lam in
@@ -909,10 +932,14 @@ let compile ?universes:(universes=(0,0)) env sigma c =
     Array.of_list @@ skip_suffix mask
   in
   let cont = [Kstop] in
+  let uclosed = match uinstance with
+  | Global -> true
+  | Bound univ -> UVars.eq_sizes (0, 0) univ
+  in
     let cenv, init_code, fun_code =
-      if UVars.eq_sizes universes (0,0) then
+      if uclosed then
         let cenv = empty_comp_env () in
-        let env = { env; fun_code = []; uinst_len = (0,0) } in
+        let env = { env; fun_code = []; uinstance } in
         let cont = compile_lam env cenv lam 0 cont in
         let cont = ensure_stack_capacity cenv cont in
         cenv, cont, env.fun_code
@@ -924,7 +951,7 @@ let compile ?universes:(universes=(0,0)) env sigma c =
         let full_arity = arity + 1 in
         let r_fun = comp_env_fun ~univs:true arity in
         let lbl_fun = Label.create () in
-        let env = { env; fun_code = []; uinst_len = universes } in
+        let env = { env; fun_code = []; uinstance } in
         let cont_fun = compile_lam env r_fun body full_arity [Kreturn full_arity] in
         let cont_fun = ensure_stack_capacity r_fun cont_fun in
         let () = push_fun env (add_grab full_arity lbl_fun cont_fun) in
@@ -947,8 +974,8 @@ let warn_compile_error =
   CWarnings.create ~name:"bytecode-compiler-failed-compilation" ~category:CWarnings.CoreCategories.bytecode_compiler
     Vmerrors.pr_error
 
-let compile ~fail_on_error ?universes env sigma c =
-  try NewProfile.profile "vm_compile" (fun () -> Some (compile ?universes env sigma c)) ()
+let compile ~fail_on_error ~uinstance env sigma c =
+  try NewProfile.profile "vm_compile" (fun () -> Some (compile ~uinstance env sigma c)) ()
   with Vmerrors.CompileError msg as exn ->
     let exn = Exninfo.capture exn in
     if fail_on_error then
@@ -978,8 +1005,12 @@ let compile_constant_body ~fail_on_error env univs = function
       match alias with
       | Some kn -> Some (BCalias kn)
       | _ ->
-        let res = compile ~fail_on_error ~universes:instance_size env (empty_evars env) body in
+        let uinstance = Bound instance_size in
+        let res = compile ~fail_on_error ~uinstance env (empty_evars env) body in
         Option.map (fun (mask, code, patch) -> BCdefined (mask, code, patch)) res
+
+let compile ~fail_on_error env sigma c =
+  compile ~fail_on_error ~uinstance:Global env sigma c
 
 (* Shortcut of the previous function used during module strengthening *)
 

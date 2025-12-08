@@ -13,9 +13,8 @@ open Constr
 open Declarations
 open Environ
 
-(** Should only be used for monomorphic terms *)
 val compile :
-  fail_on_error:bool -> ?universes:int*int ->
+  fail_on_error:bool ->
   env -> Genlambda.evars -> constr ->
   (bool array * to_patch * patches) option
 
