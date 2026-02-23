@@ -2359,6 +2359,7 @@ let vernac_register ~atts qid r =
       if Lib.sections_are_opened () then
         user_err Pp.(str "Registering a kernel type is not allowed in sections.");
       let CPrimitives.PIE pind = match Id.to_string id with
+        | "ind_nat" -> CPrimitives.(PIE PIT_nat)
         | "ind_bool" -> CPrimitives.(PIE PIT_bool)
         | "ind_carry" -> CPrimitives.(PIE PIT_carry)
         | "ind_pair" -> CPrimitives.(PIE PIT_pair)
