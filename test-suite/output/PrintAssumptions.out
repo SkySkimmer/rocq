@@ -5,8 +5,11 @@ foo : nat
 Axioms:
 bli : Type
 Axioms:
+blo relies on indices not mattering.
 bli : Type
 Axioms:
+seq relies on indices not mattering.
+eq relies on indices not mattering.
 seq relies on definitional UIP.
 Axioms:
 M.foo : False
