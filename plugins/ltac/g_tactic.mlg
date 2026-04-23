@@ -70,6 +70,7 @@ open Extraargs
 let check_for_coloneq =
   Procq.Entry.(of_parser "lpar_id_colon"
     { parser_fun = fun kwstate strm ->
+      (* empty_error not correct *)
       let rec skip_to_rpar p n =
         match List.last (Gramlib.LStream.npeek kwstate n strm) with
         | KEYWORD "(" -> skip_to_rpar (p+1) (n+1)
@@ -88,7 +89,7 @@ let check_for_coloneq =
         | KEYWORD ":=" -> Ok ()
         | _ -> Error empty_error in
       match Gramlib.LStream.peek_nth kwstate 0 strm with
-      | Some (KEYWORD "(") -> skip_binders 2
+      | Some (KEYWORD "(") -> Result.map (fun x -> x, None) (skip_binders 2)
       | _ -> Error empty_error })
 
 let lookup_at_as_comma =

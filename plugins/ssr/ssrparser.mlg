@@ -231,33 +231,33 @@ let test_ssrslashnum b1 b2 kwstate strm =
       (match LStream.peek_nth kwstate 1 strm with
       | Some (Tok.NUMBER _) when b1 ->
          (match LStream.peek_nth kwstate 2 strm with
-         | Some (Tok.KEYWORD ("=" | "/=")) when not b2 -> Ok ()
+         | Some (Tok.KEYWORD ("=" | "/=")) when not b2 -> Procq.return ()
          | Some (Tok.KEYWORD "/") ->
-             if not b2 then Ok () else begin
+             if not b2 then Procq.return () else begin
                match LStream.peek_nth kwstate 3 strm with
-               | Some (Tok.NUMBER _) -> Ok ()
+               | Some (Tok.NUMBER _) -> Procq.return ()
                | _ -> Error empty_error
              end
          | _ -> Error empty_error)
       | Some (Tok.KEYWORD "/") when not b1 ->
          (match LStream.peek_nth kwstate 2 strm with
-         | Some (Tok.KEYWORD "=") when not b2 -> Ok ()
+         | Some (Tok.KEYWORD "=") when not b2 -> Procq.return ()
          | Some (Tok.NUMBER _) when b2 ->
            (match LStream.peek_nth kwstate 3 strm with
-           | Some (Tok.KEYWORD "=") -> Ok ()
+           | Some (Tok.KEYWORD "=") -> Procq.return ()
            | _ -> Error empty_error)
-         | _ when not b2 -> Ok ()
+         | _ when not b2 -> Procq.return ()
          | _ -> Error empty_error)
-      | Some (Tok.KEYWORD "=") when not b1 && not b2 -> Ok ()
+      | Some (Tok.KEYWORD "=") when not b1 && not b2 -> Procq.return ()
       | _ -> Error empty_error)
   | Some (Tok.KEYWORD "//") when not b1 ->
          (match LStream.peek_nth kwstate 1 strm with
-         | Some (Tok.KEYWORD "=") when not b2 -> Ok ()
+         | Some (Tok.KEYWORD "=") when not b2 -> Procq.return ()
          | Some (Tok.NUMBER _) when b2 ->
            (match LStream.peek_nth kwstate 2 strm with
-           | Some (Tok.KEYWORD "=") -> Ok ()
+           | Some (Tok.KEYWORD "=") -> Procq.return ()
            | _ -> Error empty_error)
-         | _ when not b2 -> Ok ()
+         | _ when not b2 -> Procq.return ()
          | _ -> Error empty_error)
   | _ -> Error empty_error
 
@@ -268,7 +268,7 @@ let test_ssrslashnum00 = test_ssrslashnum false false
 
 let negate_parser f x y =
   match f x y with
-  | Error _ -> Ok ()
+  | Error _ -> Procq.return ()
   | Ok _ -> Error empty_error
 
 let test_not_ssrslashnum =
@@ -464,9 +464,9 @@ END
 (* Old kinds of terms *)
 
 let input_ssrtermkind kwstate strm = match LStream.peek_nth kwstate 0 strm with
-  | Some (Tok.KEYWORD "(") -> Ok InParens
-  | Some (Tok.KEYWORD "@") -> Ok WithAt
-  | Some _ -> Ok NoFlag
+  | Some (Tok.KEYWORD "(") -> Procq.return InParens
+  | Some (Tok.KEYWORD "@") -> Procq.return WithAt
+  | Some _ -> Procq.return NoFlag
   | None -> assert false (* NB this never happens, instead we get a EOI token *)
 
 let ssrtermkind = Procq.Entry.(of_parser "ssrtermkind" { parser_fun = input_ssrtermkind })
@@ -475,10 +475,10 @@ let ssrtermkind = Procq.Entry.(of_parser "ssrtermkind" { parser_fun = input_ssrt
 
 let input_term_annotation kwstate strm =
   match LStream.npeek kwstate 2 strm with
-  | Tok.KEYWORD "(" :: Tok.KEYWORD "(" :: _ -> Ok `DoubleParens
-  | Tok.KEYWORD "(" :: _ -> Ok `Parens
-  | Tok.KEYWORD "@" :: _ -> Ok `At
-  | _ -> Ok `None
+  | Tok.KEYWORD "(" :: Tok.KEYWORD "(" :: _ -> Procq.return `DoubleParens
+  | Tok.KEYWORD "(" :: _ -> Procq.return `Parens
+  | Tok.KEYWORD "@" :: _ -> Procq.return `At
+  | _ -> Procq.return `None
 let term_annotation =
   Procq.Entry.(of_parser "term_annotation" { parser_fun = input_term_annotation })
 
@@ -825,8 +825,8 @@ let reject_ssrhid kwstate strm =
   | Some (Tok.KEYWORD "[") ->
       (match LStream.peek_nth kwstate 1 strm with
       | Some (Tok.KEYWORD ":") -> Error empty_error
-      | _ -> Ok ())
-  | _ -> Ok ()
+      | _ -> Procq.return ())
+  | _ -> Procq.return ()
 
 let test_nohidden = Procq.Entry.(of_parser "test_ssrhid" { parser_fun = reject_ssrhid })
 
@@ -836,7 +836,7 @@ let rec reject_binder crossed_paren k kwstate s =
   | Some (Tok.IDENT _) when crossed_paren -> reject_binder true (k+1) kwstate s
   | Some (Tok.KEYWORD ":" | Tok.KEYWORD ":=") when crossed_paren -> Error empty_error
   | Some (Tok.KEYWORD ")") when crossed_paren -> Error empty_error
-  | _ -> if crossed_paren then Ok () else Error empty_error
+  | _ -> if crossed_paren then Procq.return () else Error empty_error
 
 let _test_nobinder = Procq.Entry.(of_parser "test_nobinder" { parser_fun = reject_binder false 0 })
 
@@ -1628,7 +1628,7 @@ let ssr_id_of_string loc s =
     CErrors.user_err ~loc (str ("The identifier " ^ s ^ " is reserved."))
   end; Id.of_string s
 
-let ssr_null_entry = Procq.Entry.(of_parser "ssr_null" { parser_fun = fun _ _ -> Ok () })
+let ssr_null_entry = Procq.Entry.(of_parser "ssr_null" { parser_fun = fun _ _ -> Procq.return () })
 
 }
 

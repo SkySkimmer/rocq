@@ -37,13 +37,15 @@ module type S = sig
 
   val merge_errors : peek_error -> peek_error -> peek_error
 
-  type 'a parser_v = ('a, peek_error) result
+  type 'a parser_v = ('a * peek_error option, peek_error) result
   (** Recoverable parsing errors are signaled use [Error]. To be
       correctly recovered we must not have consumed any tokens since
       the last choice point, ie we only peeked at the stream.
 
       Other errors are signaled using the [ParseError] exception or
       even arbitrary exceptions. *)
+
+  val return : 'a -> 'a parser_v
 
   val add_error : peek_error -> 'a parser_v -> 'a parser_v
 

@@ -264,8 +264,8 @@ let set_prompt prompt =
 (* Read the input stream until a dot is encountered *)
 let parse_to_dot =
   let rec dot kwstate st = match Gramlib.LStream.next kwstate st with
-    | Some (Tok.KEYWORD ("."|"...")) -> Ok ()
-    | Some Tok.EOI -> Ok ()
+    | Some (Tok.KEYWORD ("."|"...")) -> Procq.return ()
+    | Some Tok.EOI -> Procq.return ()
     | Some _ -> dot kwstate st
     | None -> assert false (* should get EOI first *)
   in

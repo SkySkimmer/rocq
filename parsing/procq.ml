@@ -201,6 +201,10 @@ struct
 
   type t = int -> CLexer.keyword_state -> (CLexer.keyword_state,Tok.t) LStream.t -> (int,peek_error) result
 
+  let add_error e = function
+    | Ok _ as x -> x
+    | Error e' -> Error (merge_errors e e')
+
   let rec contiguous n m strm =
     n == m ||
     let (_, ep) = Loc.unloc (LStream.get_loc n strm) in
@@ -212,7 +216,7 @@ struct
     if contiguous n (n+m-1) strm then Ok m else Error empty_error
 
   let to_entry s (lk : t) =
-    let run kwstate strm = match lk 0 kwstate strm with Error e -> Error e | Ok _ -> Ok () in
+    let run kwstate strm = match lk 0 kwstate strm with Error e -> Error e | Ok _ -> return () in
     Entry.(of_parser s { parser_fun = run })
 
   let (>>) (lk1 : t) lk2 n kwstate strm = match lk1 n kwstate strm with
