@@ -10,7 +10,6 @@
 
 open Util
 open Names
-open Context
 open Constr
 open Environ
 open Evd
@@ -688,6 +687,7 @@ let undefined_evars_of_named_context evd nc =
     nc
     ~init:Evar.Set.empty
 
+(* not sure how useful it is to have 2 layers of mutability (mutable field + refs in the map) *)
 type undefined_evars_cache = {
   mutable cache : (EConstr.named_declaration * Evar.Set.t) ref Id.Map.t;
 }
@@ -702,25 +702,19 @@ let cached_evar_of_hyp cache sigma decl accu = match cache with
   in
   NamedDecl.fold_constr fold decl accu
 | Some cache ->
-  let id = NamedDecl.get_annot decl in
-  let r =
-    try Id.Map.find id.binder_name cache.cache
-    with Not_found ->
-      (* Dummy value *)
-      let r = ref (NamedDecl.LocalAssum (id, EConstr.mkProp), Evar.Set.empty) in
-      let () = cache.cache <- Id.Map.add id.binder_name r cache.cache in
-      r
-  in
-  let (decl', evs) = !r in
-  let evs =
-    if NamedDecl.equal (==) (==) decl decl' then snd !r
-    else
+  let id = NamedDecl.get_id decl in
+  let evs = match Id.Map.find_opt id cache.cache with
+    | Some {contents = decl',evs } when NamedDecl.equal (==) (==) decl decl' -> evs
+    | None | Some _ as r ->
       let fold c acc =
         let evs = undefined_evars_of_term sigma c in
         Evar.Set.union evs acc
       in
       let evs = NamedDecl.fold_constr fold decl Evar.Set.empty in
-      let () = r := (decl, evs) in
+      let () = match r with
+        | None -> cache.cache <- Id.Map.add id (ref (decl,evs)) cache.cache
+        | Some r -> r := (decl,evs)
+      in
       evs
   in
   Evar.Set.fold Evar.Set.add evs accu
