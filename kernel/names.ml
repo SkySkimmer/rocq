@@ -961,6 +961,9 @@ module PRmap = HMap.Make(Projection.Repr.CanOrd)
 module PRset = PRmap.Set
 module PRpred = Predicate.Make(Projection.Repr.CanOrd)
 
+module PRmap_env = HMap.Make(Projection.Repr.UserOrd)
+module PRset_env = PRmap_env.Set
+
 module GlobRefInternal = struct
 
   type t =

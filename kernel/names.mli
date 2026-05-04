@@ -620,6 +620,9 @@ end
 module PRset : CSig.USetS with type elt = Projection.Repr.t
 module PRmap : Map.UExtS with type key = Projection.Repr.t and module Set := PRset
 
+module PRset_env : CSig.USetS with type elt = Projection.Repr.t
+module PRmap_env : Map.UExtS with type key = Projection.Repr.t and module Set := PRset_env
+
 (** Predicate on projection representation (ignoring unfolding state) *)
 module PRpred : Predicate.S with type elt = Projection.Repr.t
 
