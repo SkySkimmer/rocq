@@ -160,11 +160,14 @@ let clear_gen fail = function
 | [] -> Proofview.tclUNIT ()
 | ids ->
   Proofview.Goal.enter begin fun gl ->
-    let ids = List.fold_right Id.Set.add ids Id.Set.empty in
-    (* clear_hyps_in_evi does not require nf terms *)
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let concl = Proofview.Goal.concl gl in
+    let add id acc =
+      if Environ.mem_named id env then Id.Set.add id acc
+      else CErrors.user_err Pp.(fmt "No such hypothesis: %t." (fun () -> Id.print id))
+    in
+    let ids = List.fold_right add ids Id.Set.empty in
     let (sigma, hyps, concl) =
       try clear_hyps_in_evi env sigma (named_context_val env) concl ids
       with Evarutil.ClearDependencyError (id,err,inglobal) -> fail env sigma id err inglobal
