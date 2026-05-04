@@ -414,7 +414,7 @@ let autounfold db cls =
       with Not_found -> raise (UnknownDatabase dbname)
     in
     let (db_ids, db_csts, db_prjs) = Hint_db.unfolds db in
-    (Id.Set.fold cons db_ids ids, Cset.fold cons db_csts csts, PRset.fold cons db_prjs prjs)) ([], [], []) db
+    (Id.Set.fold cons db_ids ids, Cset_env.fold cons db_csts csts, PRset_env.fold cons db_prjs prjs)) ([], [], []) db
   with
   | (ids, csts, prjs) -> Proofview.Goal.enter begin fun gl ->
       let cls = concrete_clause_of (fun () -> Tacmach.pf_ids_of_hyps gl) cls in
@@ -434,10 +434,10 @@ let autounfold_tac db cls =
   in
   autounfold dbs cls
 
-let transparent_constant csts prjs c =
+let transparent_constant env csts prjs c =
   match Structures.PrimitiveProjections.find_opt c with
-  | None -> Cset.mem c csts
-  | Some p -> PRset.mem p prjs
+  | None -> Cset_env.mem (Environ.QConstant.canonize env c) csts
+  | Some p -> PRset_env.mem (Environ.QProjection.Repr.canonize env p) prjs
 
 let unfold_head env sigma (ids, csts, prjs) c =
   (* TODO use prjs *)
@@ -447,7 +447,7 @@ let unfold_head env sigma (ids, csts, prjs) c =
         (match Environ.named_body id env with
         | Some b -> true, EConstr.of_constr b
         | None -> false, c)
-    | Const (cst, u) when transparent_constant csts prjs cst ->
+    | Const (cst, u) when transparent_constant env csts prjs cst ->
         let u = EInstance.kind sigma u in
         true, EConstr.of_constr (Environ.constant_value_in env (cst, u))
     | App (f, args) ->
@@ -484,7 +484,7 @@ let autounfold_one db cl =
         with Not_found -> user_err (str "Unknown database " ++ str dbname ++ str ".")
       in
       let (ids, csts, prjs) = Hint_db.unfolds db in
-        (Id.Set.union ids i, Cset.union csts c, PRset.union prjs p)) (Id.Set.empty, Cset.empty, PRset.empty) db
+        (Id.Set.union ids i, Cset_env.union csts c, PRset_env.union prjs p)) (Id.Set.empty, Cset_env.empty, PRset_env.empty) db
   in
   let did, c' = unfold_head env sigma st
     (match cl with Some (id, _) -> Tacmach.pf_get_hyp_typ id gl | None -> concl)

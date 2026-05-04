@@ -608,7 +608,7 @@ val set_transparent_state : t -> TransparentState.t -> t
 val add_cut : Environ.env -> hints_path -> t -> t
 val add_mode : Environ.env -> GlobRef.t -> hint_mode array -> t -> t
 val cut : t -> hints_path
-val unfolds : t -> Id.Set.t * Cset.t * PRset.t
+val unfolds : t -> Id.Set.t * Cset_env.t * PRset_env.t
 val add_modes : Modes.t -> t -> t
 val modes : t -> Modes.t
 val find_mode : env -> GlobRef.t -> t -> hint_mode array list
@@ -620,7 +620,7 @@ struct
   type t = {
     hintdb_state : TransparentState.t;
     hintdb_cut : hints_path;
-    hintdb_unfolds : Id.Set.t * Cset.t * PRset.t;
+    hintdb_unfolds : Id.Set.t * Cset_env.t * PRset_env.t;
     hintdb_max_id : int;
     use_dn : bool;
     hintdb_map : search_entry GlobRef.Map_env.t;
@@ -635,7 +635,7 @@ struct
 
   let empty ?name st use_dn = { hintdb_state = st;
                           hintdb_cut = PathEmpty;
-                          hintdb_unfolds = (Id.Set.empty, Cset.empty, PRset.empty);
+                          hintdb_unfolds = (Id.Set.empty, Cset_env.empty, PRset_env.empty);
                           hintdb_max_id = 0;
                           use_dn = use_dn;
                           hintdb_map = GlobRef.Map_env.empty;
@@ -775,9 +775,13 @@ struct
       | Evaluable.EvalVarRef id ->
         { ts with tr_var = Id.Pred.add id ts.tr_var }, (Id.Set.add id ids, csts, prjs)
       | Evaluable.EvalConstRef cst ->
-        { ts with tr_cst = Cpred.add cst ts.tr_cst }, (ids, Cset.add cst csts, prjs)
+        (* TODO: do we really want to canonize? *)
+        let cst = QConstant.canonize env cst in
+        { ts with tr_cst = Cpred.add cst ts.tr_cst }, (ids, Cset_env.add cst csts, prjs)
       | Evaluable.EvalProjectionRef p ->
-        { ts with tr_prj = PRpred.add p ts.tr_prj }, (ids, csts, PRset.add p prjs)
+        (* TODO: do we really want to canonize? *)
+        let p = QProjection.Repr.canonize env p in
+        { ts with tr_prj = PRpred.add p ts.tr_prj }, (ids, csts, PRset_env.add p prjs)
       in
       let db = { db with hintdb_unfolds = unfs } in
       if db.use_dn then rebuild_db state db else db
