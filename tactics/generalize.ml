@@ -488,7 +488,6 @@ let abstract_args gl generalize_vars dep id defined f args =
 let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id =
   let open Context.Named.Declaration in
   Proofview.Goal.enter begin fun gl ->
-  Rocqlib.(check_required_library jmeq_module_name);
   let sigma = Proofview.Goal.sigma gl in
   let (f, args, def, id, oldid) =
     let oldid = Tacmach.pf_get_new_id id gl in
