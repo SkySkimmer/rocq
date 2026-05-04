@@ -343,14 +343,14 @@ let rec compare_under e1 c1 e2 c2 =
     && compare_under e1 c1 e2 c2
     && Array.equal_norefl (fun c1 c2 -> compare_under e1 c1 e2 c2) l1 l2
   | Proj (p1,_,c1), Proj (p2,_,c2) ->
-    Projection.CanOrd.equal p1 p2 && compare_under e1 c1 e2 c2
+    Projection.UserOrd.equal p1 p2 && compare_under e1 c1 e2 c2
   | Evar _, Evar _ -> false
   | Const (c1,u1), Const (c2,u2) ->
     (* The args length currently isn't used but may as well pass it. *)
-    Constant.CanOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
-  | Ind (c1,u1), Ind (c2,u2) -> Ind.CanOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
+    Constant.UserOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
+  | Ind (c1,u1), Ind (c2,u2) -> Ind.UserOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
   | Construct (c1,u1), Construct (c2,u2) ->
-    Construct.CanOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
+    Construct.UserOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
   | Case _, Case _ | Fix _, Fix _ | CoFix _, CoFix _ -> false (* todo some other time *)
   | Array(_,t1,def1,ty1), Array(_,t2,def2,ty2) ->
     Array.equal_norefl (fun c1 c2 -> compare_under e1 c1 e2 c2) t1 t2
