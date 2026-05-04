@@ -364,12 +364,17 @@ let hyps_of_vars env sigma sign nogen hyps =
     let (_,lh) =
       Context.Named.fold_inside
         (fun (hs,hl) d ->
+           (* hs: vars to generalize (set)
+              hl: vars to generalize that we have seen (list)
+
+              we should generalize d if it is not nogen and
+              either is in hs, or depends on some var in hs *)
           let x = NamedDecl.get_id d in
           if Id.Set.mem x nogen then (hs,hl)
           else if Id.Set.mem x hs then (hs,x::hl)
           else
             let xvars = global_vars_set_of_decl env sigma d in
-              if not (Id.Set.is_empty (Id.Set.diff xvars hs)) then
+              if not (Id.Set.is_empty (Id.Set.inter xvars hs)) then
                 (Id.Set.add x hs, x :: hl)
               else (hs, hl))
         ~init:(hyps,[])
