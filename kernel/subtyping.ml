@@ -228,10 +228,11 @@ let check_inductive (cst, ustate) trace env mp1 l info1 mp2 mib2 subst1 subst2 r
     error (InductiveParamsNumberField { got = mib1.mind_nparams; expected = mib2.mind_nparams });
 
   begin
+    let kn1' = kn_of_delta reso1 kn1 in
     let kn2' = kn_of_delta reso2 kn2 in
-    let mind1 = mind_of_delta_kn reso1 kn1 in
+    let mind1 = MutInd.make kn1 kn1' in
     let mind2 = subst_mind subst2 (MutInd.make kn2 kn2') in
-    if KerName.equal kn2 kn2' || MutInd.CanOrd.equal mind1 mind2
+    if KerName.equal kn2 kn2' || KerName.equal kn1' (MutInd.canonical mind2)
     then ()
     else error (NotEqualInductiveAliases (mind1, mind2))
   end;
