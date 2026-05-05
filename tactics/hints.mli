@@ -155,7 +155,7 @@ module Hint_db :
     val add_cut : env -> hints_path -> t -> t
     val cut : t -> hints_path
 
-    val unfolds : t -> Id.Set.t * Cset.t * PRset.t
+    val unfolds : t -> Id.Set.t * Cset_env.t * PRset_env.t
 
     val add_modes : Modes.t -> t -> t
     val modes : t -> Modes.t
