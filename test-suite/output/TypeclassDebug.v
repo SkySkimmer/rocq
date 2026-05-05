@@ -26,7 +26,7 @@ Section Resolve.
   Goal bar.
   Proof.
     typeclasses eauto with foo.
-  Qed.
+  Defined.
 End Resolve.
 
 Section ExternApply.
@@ -35,7 +35,7 @@ Section ExternApply.
   Goal bar.
   Proof.
     typeclasses eauto with foo.
-  Qed.
+  Defined.
 End ExternApply.
 
 Section ExternTC.
@@ -44,5 +44,5 @@ Section ExternTC.
   Goal bar.
   Proof.
     typeclasses eauto with foo.
-  Qed.
+  Defined.
 End ExternTC.
