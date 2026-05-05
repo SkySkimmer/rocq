@@ -840,9 +840,14 @@ module Search = struct
       in
       if path_matches_epsilon derivs then aux e tl
       else
+        let i = !idx in
+        let () = if hint_extern then ppdebug 0 (fun () ->
+            pr_depth (i :: info.search_depth) ++ str": running " ++ Lazy.force pp
+            ++ str" on" ++ spc () ++ pr_ev sigma (Proofview.Goal.goal gl))
+        in
         ortac
              (with_shelf tac >>= fun s ->
-              let i = !idx in incr idx; result s i None)
+              incr idx; result s i None)
              (fun e' ->
                 (pr_error e'; aux (merge_exceptions e e') tl))
     and aux e = function
