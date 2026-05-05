@@ -612,8 +612,16 @@ let cook_sign hyp0_opt inhyps indvars env sigma =
         (Id.Set.exists (fun id -> occur_var_in_decl env sigma id decl) indvars ||
          List.exists (fun decl' -> occur_var_in_decl env sigma (NamedDecl.get_id decl') decl) !decldeps)
       in
+      let indirect =
+        (dephyp0 || depother) &&
+        (Option.cata (fun id ->
+             NamedDecl.exists (fun c ->
+                 Option.has_some @@ occur_var_indirectly env sigma id c)
+               decl)
+            false hyp0_opt)
+      in
       if not (List.is_empty inhyps) && Id.List.mem hyp inhyps
-         || dephyp0 || depother
+      || (not indirect && (dephyp0 || depother))
       then begin
         decldeps := decl::!decldeps;
         avoid := Id.Set.add hyp !avoid;
@@ -1398,7 +1406,7 @@ let induction_gen ~clear_flag ~isrec ~with_evars elim
   let cls = Option.default allHypsAndConcl cls in
   let t = typ_of env evd c in
   let is_arg_pure_hyp =
-    isVar evd c && not (mem_named_context_val (destVar evd c) (Global.named_context_val ()))
+    isVar evd c
     && lbind == NoBindings && not with_evars && Option.is_empty eqname
     && clear_flag == None
     && has_generic_occurrences_but_goal cls (destVar evd c) env evd ccl in
