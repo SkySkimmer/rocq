@@ -132,9 +132,9 @@ let type_of_logical_kind = function
 
 (** Data associated to global parameters and constants *)
 
-let csttab = Summary.ref (Names.Cmap.empty : logical_kind Names.Cmap.t) ~name:"CONSTANT"
-let add_constant_kind kn k = csttab := Names.Cmap.add kn k !csttab
-let constant_kind kn = Names.Cmap.find kn !csttab
+let csttab = Summary.ref (Environ.QConstant.Map.empty : logical_kind Environ.QConstant.Map.t) ~name:"CONSTANT"
+let add_constant_kind env kn k = csttab := Environ.QConstant.Map.add env kn k !csttab
+let constant_kind env kn = Environ.QConstant.Map.find env kn !csttab
 
 let type_of_global_ref gr =
   if Typeclasses.is_class (Global.env ()) gr then
@@ -143,7 +143,7 @@ let type_of_global_ref gr =
     let open Names.GlobRef in
     match gr with
     | ConstRef cst ->
-      let knd = try constant_kind cst with Not_found -> IsDefinition Definition in
+      let knd = try constant_kind (Global.env ()) cst with Not_found -> IsDefinition Definition in
       type_of_logical_kind knd
     | VarRef v ->
       let knd = try Decls.variable_kind v with Not_found -> IsDefinition Definition in
