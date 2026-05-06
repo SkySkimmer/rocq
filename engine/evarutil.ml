@@ -64,17 +64,17 @@ let tj_nf_evar sigma {utj_val=v;utj_type=t} =
 let nf_relevance sigma r =
   UState.nf_relevance (Evd.ustate sigma) r
 
-let nf_named_context_evar sigma ctx =
-  Context.Named.map_with_relevance (nf_relevance sigma) (nf_evars_universes sigma) ctx
+let nf_named_decl_evar sigma status ctx =
+  status, Context.Named.Declaration.map_constr_with_relevance (nf_relevance sigma) (nf_evars_universes sigma) ctx
 
 let nf_rel_context_evar sigma ctx =
   let nf_relevance r = ERelevance.make (ERelevance.kind sigma r) in
   Context.Rel.map_with_relevance nf_relevance (nf_evar sigma) ctx
 
 let nf_env_evar sigma env =
-  let nc' = nf_named_context_evar sigma (Environ.named_context env) in
+  let nc' = Environ.map_named_val (nf_named_decl_evar sigma) (Environ.named_context_val env) in
   let rel' = nf_rel_context_evar sigma (EConstr.rel_context env) in
-    EConstr.push_rel_context rel' (reset_with_named_context (val_of_named_context nc') env)
+    EConstr.push_rel_context rel' (reset_with_named_context nc' env)
 
 let nf_evar_info evc info = map_evar_info (nf_evar evc) info
 
@@ -116,7 +116,7 @@ let is_ground_env evd env =
     | _ -> true in
   let is_ground_named_decl = function
     (* skip if SecVar? *)
-    | NamedDecl.LocalDef (_,_,b,_) -> is_ground_term evd (EConstr.of_constr b)
+    | NamedDecl.LocalDef (_,b,_) -> is_ground_term evd (EConstr.of_constr b)
     | _ -> true in
   List.for_all is_ground_rel_decl (rel_context env) &&
   List.for_all is_ground_named_decl (named_context env)
@@ -294,14 +294,15 @@ let push_rel_decl_to_named_context
   in
   let rec replace_var_named_declaration id0 id nc = match match_named_context_val nc with
   | None -> empty_named_context_val
-  | Some (decl, nc) ->
+  | Some (status, decl, nc) ->
     if Id.equal id0 (NamedDecl.get_id decl) then
-      (* Stop here, the variable cannot occur before its definition *)
-      push_named_context_val (NamedDecl.set_id id decl) nc
+      (* Stop here, the variable cannot occur before its definition
+         NB: we lose section variable status *)
+      push_named_context_val ProofVar (NamedDecl.set_id id decl) nc
     else
       let nc = replace_var_named_declaration id0 id nc in
       let vsubst = [id0 , mkVar id] in
-      push_named_context_val (map_decl (fun c -> replace_vars sigma vsubst c) decl) nc
+      push_named_context_val status (map_decl (fun c -> replace_vars sigma vsubst c) decl) nc
   in
   let extract_if_neq id = function
     | Anonymous -> None
@@ -324,7 +325,7 @@ let push_rel_decl_to_named_context
       let d = decl |> NamedDecl.of_rel_decl (fun _ -> id) |> map_decl (csubst_subst sigma ext.ext_subst) in
       { ext_subst = push_var id ext.ext_subst;
         ext_avoid = Id.Set.add id ext.ext_avoid;
-        ext_ctx = push_named_context_val d ext.ext_ctx }
+        ext_ctx = push_named_context_val ProofVar d ext.ext_ctx }
     else
       (* spiwack: if [id<>id0], rather than introducing a new
           binding named [id], we will keep [id0] (the name given
@@ -336,12 +337,12 @@ let push_rel_decl_to_named_context
       let avoid = Id.Set.add id (Id.Set.add id0 ext.ext_avoid) in
       { ext_subst = push_var id0 subst;
         ext_avoid = avoid;
-        ext_ctx = push_named_context_val d nc }
+        ext_ctx = push_named_context_val ProofVar d nc }
   | None ->
     let d = decl |> NamedDecl.of_rel_decl (fun _ -> id) |> map_decl (csubst_subst sigma ext.ext_subst) in
     { ext_subst = push_var id ext.ext_subst;
       ext_avoid = Id.Set.add id ext.ext_avoid;
-      ext_ctx = push_named_context_val d ext.ext_ctx }
+      ext_ctx = push_named_context_val ProofVar d ext.ext_ctx }
 
 let csubst_instance subst ctx =
   let fold decl accu = match Id.Map.find (NamedDecl.get_id decl) subst.csubst_rev with
@@ -596,10 +597,10 @@ let clear_hyps_in_evi_main env sigma hyps terms ids =
   let terms =
     List.map (check_and_clear_in_constr env evdref (OccurHypInSimpleClause None) ids ~global) terms in
   let nhyps =
-    let check_context decl =
+    let check_context status decl =
       let decl = EConstr.of_named_decl decl in
       let err = OccurHypInSimpleClause (Some (NamedDecl.get_id decl)) in
-      EConstr.Unsafe.to_named_decl @@ NamedDecl.map_constr (check_and_clear_in_constr env evdref err ids ~global) decl
+      status, EConstr.Unsafe.to_named_decl @@ NamedDecl.map_constr (check_and_clear_in_constr env evdref err ids ~global) decl
     in
     remove_hyps ids check_context hyps
   in
@@ -694,7 +695,7 @@ let cached_evar_of_hyp cache sigma decl accu = match cache with
     try Id.Map.find id.binder_name cache.cache
     with Not_found ->
       (* Dummy value *)
-      let r = ref (NamedDecl.LocalAssum (ProofVar, id, EConstr.mkProp), Evar.Set.empty) in
+      let r = ref (NamedDecl.LocalAssum (id, EConstr.mkProp), Evar.Set.empty) in
       let () = cache.cache <- Id.Map.add id.binder_name r cache.cache in
       r
   in

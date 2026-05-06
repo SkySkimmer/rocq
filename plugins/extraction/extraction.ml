@@ -402,9 +402,9 @@ let rec extract_type (table : Common.State.t) env sg db j c args =
        (* For Show Extraction *)
        let open Context.Named.Declaration in
        (match EConstr.lookup_named v env with
-        | LocalDef (_,_,body,_) ->
+        | LocalDef (_,body,_) ->
            extract_type table env sg db j (EConstr.applist (body,args)) []
-        | LocalAssum (_,_,ty) ->
+        | LocalAssum (_,ty) ->
            let r = { glob = GlobRef.VarRef v; inst = InfvInst.empty } in
            (match flag_of_type env sg ty with
             | (Logic,_) -> assert false (* Cf. logical cases above *)

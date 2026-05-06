@@ -38,8 +38,8 @@ let cache_term_by_tactic_then ~opaque ~name_op ?(goal_type=None) tac tacK =
     let sign,secsign =
       List.fold_right
         (fun d (s1,s2) ->
-           match NamedDecl.get_status d with
-           | SecVar -> (s1,push_named_context_val d s2)
+           match Environ.var_status (NamedDecl.get_id d) env with
+           | SecVar -> (s1,push_named_context_val SecVar d s2)
            | ProofVar -> (Context.Named.add d s1,s2))
         goal_sign (Context.Named.empty, Environ.empty_named_context_val)
     in

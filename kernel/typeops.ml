@@ -174,11 +174,10 @@ let type_of_variable env id =
 let check_hyps_inclusion env c sign =
   sign |> List.iter @@ fun d ->
   let id = NamedDecl.get_id d in
-  let ok = match lookup_named id env with
-    | exception Not_found -> false
-    | d' -> match NamedDecl.get_status d' with
-      | SecVar -> true
-      | ProofVar -> false
+  let ok =
+    match var_status ~check:false id env with
+    | SecVar -> true
+    | ProofVar -> false
   in
   if not ok then error_reference_variables env id c
 

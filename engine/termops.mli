@@ -210,9 +210,11 @@ val dependency_closure : env -> Evd.evar_map -> named_context -> Id.Set.t -> Id.
 val is_section_variable : env -> Id.t -> bool
 [@@deprecated "Use is_section_variable' on the local env instead of is_section_variable on the global env."]
 
-(** Check if the ident has [SecVar] status in this enviroment. Anomaly if it is not bound. *)
-val is_section_variable_sign : Environ.named_context_val -> Id.t -> bool
-val is_section_variable' : env -> Id.t -> bool
+(** Check if the ident has [SecVar] status in this enviroment.
+    By default [check=true] and produce anomaly if it is not bound.
+    If [check=false] returns [false] if it is not bound. *)
+val is_section_variable_sign : ?check:bool -> Environ.named_context_val -> Id.t -> bool
+val is_section_variable' : ?check:bool -> env -> Id.t -> bool
 
 val is_template_polymorphic_ref : env -> Evd.evar_map -> constr -> bool
 val is_template_polymorphic_ind : env -> Evd.evar_map -> constr -> bool

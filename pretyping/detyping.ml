@@ -858,7 +858,7 @@ and detype_r d flags avoid env sigma t =
         let bound_to_itself_or_letin decl c =
           match decl with
           | LocalDef _ -> true
-          | LocalAssum (_,id,_) ->
+          | LocalAssum (id,_) ->
              try let n = List.index Name.equal (Name id.binder_name) (fst env) in
                  isRelN sigma n c
              with Not_found -> isVarId sigma id.binder_name c

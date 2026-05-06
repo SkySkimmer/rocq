@@ -37,7 +37,7 @@ module Internal = struct
     let open NamedDecl in
     let pbody = match decl with
       | LocalAssum _ ->  mt ()
-      | LocalDef (_,_,c,_) ->
+      | LocalDef (_,c,_) ->
         (* Force evaluation *)
         let c = EConstr.of_constr c in
         let pb = print_constr_env env sigma c in
@@ -62,7 +62,7 @@ module Internal = struct
 
   let print_named_context env sigma =
     hv 0 (fold_named_context
-            (fun env d pps ->
+            (fun env _status d pps ->
                pps ++ ws 2 ++ pr_var_decl env sigma d)
             env ~init:(mt ()))
 
@@ -74,7 +74,7 @@ module Internal = struct
   let print_env env sigma =
     let sign_env =
       fold_named_context
-        (fun env d pps ->
+        (fun env _status d pps ->
            let pidt =  pr_var_decl env sigma d in
            (pps ++ fnl () ++ pidt))
         env ~init:(mt ())
@@ -149,9 +149,9 @@ let pr_decl env sigma (decl,ok) =
   let open NamedDecl in
   let print_constr = Internal.print_kconstr in
   match decl with
-  | LocalAssum (_,{binder_name=id},_) ->
+  | LocalAssum ({binder_name=id},_) ->
     if ok then Id.print id else (str "{" ++ Id.print id ++ str "}")
-  | LocalDef (_,{binder_name=id},c,_) ->
+  | LocalDef ({binder_name=id},c,_) ->
     str (if ok then "(" else "{") ++ Id.print id ++ str ":=" ++
     print_constr env sigma c ++ str (if ok then ")" else "}")
 
@@ -1007,13 +1007,12 @@ let ids_of_context env =
 let names_of_rel_context env =
   List.map RelDecl.get_name (rel_context env)
 
-let is_section_variable_sign sign id =
-  match NamedDecl.get_status @@ Environ.lookup_named_ctxt id sign with
-  | exception Not_found -> assert false
+let is_section_variable_sign ?check sign id =
+  match Environ.var_status_ctxt ?check id sign with
   | SecVar -> true
   | ProofVar -> false
 
-let is_section_variable' env id = is_section_variable_sign (Environ.named_context_val env) id
+let is_section_variable' ?check env id = is_section_variable_sign ?check (Environ.named_context_val env) id
 
 let is_template_polymorphic_ref env sigma f =
   match EConstr.kind sigma f with
@@ -1185,30 +1184,30 @@ let mem_named_context_val id ctxt =
 let compact_named_context sigma sign =
   let compact l decl =
     match decl, l with
-    | NamedDecl.LocalAssum (_,i,t), [] ->
+    | NamedDecl.LocalAssum (i,t), [] ->
        [CompactedDecl.LocalAssum ([i],t)]
-    | NamedDecl.LocalDef (_,i,c,t), [] ->
+    | NamedDecl.LocalDef (i,c,t), [] ->
        [CompactedDecl.LocalDef ([i],c,t)]
-    | NamedDecl.LocalAssum (_,i1,t1), CompactedDecl.LocalAssum (li,t2) :: q ->
+    | NamedDecl.LocalAssum (i1,t1), CompactedDecl.LocalAssum (li,t2) :: q ->
        if EConstr.eq_constr sigma t1 t2
        then CompactedDecl.LocalAssum (i1::li, t2) :: q
        else CompactedDecl.LocalAssum ([i1],t1) :: CompactedDecl.LocalAssum (li,t2) :: q
-    | NamedDecl.LocalDef (_,i1,c1,t1), CompactedDecl.LocalDef (li,c2,t2) :: q ->
+    | NamedDecl.LocalDef (i1,c1,t1), CompactedDecl.LocalDef (li,c2,t2) :: q ->
        if EConstr.eq_constr sigma c1 c2 && EConstr.eq_constr sigma t1 t2
        then CompactedDecl.LocalDef (i1::li, c2, t2) :: q
        else CompactedDecl.LocalDef ([i1],c1,t1) :: CompactedDecl.LocalDef (li,c2,t2) :: q
-    | NamedDecl.LocalAssum (_,i,t), q ->
+    | NamedDecl.LocalAssum (i,t), q ->
        CompactedDecl.LocalAssum ([i],t) :: q
-    | NamedDecl.LocalDef (_,i,c,t), q ->
+    | NamedDecl.LocalDef (i,c,t), q ->
        CompactedDecl.LocalDef ([i],c,t) :: q
   in
   sign |> Context.Named.fold_inside compact ~init:[] |> List.rev
 
 let clear_named_body id env =
   let open NamedDecl in
-  let aux _ = function
-  | LocalDef (s,id',c,t) when Id.equal id id'.binder_name -> push_named (LocalAssum (s,id',t))
-  | d -> push_named d in
+  let aux _ status = function
+  | LocalDef (id',c,t) when Id.equal id id'.binder_name -> push_named status (LocalAssum (id',t))
+  | d -> push_named status d in
   fold_named_context aux env ~init:(reset_context env)
 
 let global_vars_set env sigma constr =
@@ -1220,8 +1219,8 @@ let global_vars_set env sigma constr =
   filtrec Id.Set.empty constr
 
 let global_vars_set_of_decl env sigma = function
-  | NamedDecl.LocalAssum (_,_,t) -> global_vars_set env sigma t
-  | NamedDecl.LocalDef (_,_,c,t) ->
+  | NamedDecl.LocalAssum (_,t) -> global_vars_set env sigma t
+  | NamedDecl.LocalDef (_,c,t) ->
       Id.Set.union (global_vars_set env sigma t)
         (global_vars_set env sigma c)
 

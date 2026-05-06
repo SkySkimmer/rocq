@@ -418,7 +418,7 @@ let pr_erel_decl ?flags env sigma (decl:EConstr.rel_declaration) =
 
 (* Prints a signature, all declarations on the same line if possible *)
 let pr_named_context_of ?flags env sigma =
-  let make_decl_list env d pps = pr_named_decl ?flags env sigma d :: pps in
+  let make_decl_list env _status d pps = pr_named_decl ?flags env sigma d :: pps in
   let psl = List.rev (fold_named_context make_decl_list env ~init:[]) in
   hv 0 (prlist_with_sep (fun _ -> ws 2) (fun x -> x) psl)
 
@@ -813,7 +813,7 @@ let process_dependent_evar q acc evm is_dependent e =
     queue_term q true (NamedDecl.get_type decl);
     match decl with
     | LocalAssum _ -> ()
-    | LocalDef (_,_,b,_) -> queue_term q true b
+    | LocalDef (_,b,_) -> queue_term q true b
   end (EConstr.named_context_of_val (Evd.evar_hyps evi));
   match Evd.evar_body evi with
   | Evar_empty ->

@@ -77,12 +77,9 @@ let secvars_of_hyps hyps =
   let open Context.Named.Declaration in
   let pred, all =
     List.fold_left (fun (pred,all) decl ->
-        match Environ.lookup_named_ctxt (get_id decl) hyps with
-        | exception Not_found -> (pred, false)
-        | d ->
-          if is_secvar d then
-            (Id.Pred.add (get_id decl) pred, all)
-          else (pred, false))
+        if Termops.is_section_variable_sign ~check:false hyps (get_id decl) then
+          (Id.Pred.add (get_id decl) pred, all)
+        else (pred, false))
       (Id.Pred.empty,true) secctx
   in
   (* NB: this is not just [forall is_secvar hyps] because we need to

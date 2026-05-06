@@ -54,8 +54,8 @@ let build_newrecursive lnameargsardef =
         let open Context.Named.Declaration in
         let r = ERelevance.relevant in
         (* TODO relevance *)
-        ( EConstr.push_named
-            (LocalAssum (ProofVar, Context.make_annot recname r, arity))
+        ( EConstr.push_named ProofVar
+            (LocalAssum (Context.make_annot recname r, arity))
             env
         , Id.Map.add recname impl impls ))
       (env0, Constrintern.empty_internalization_env)
@@ -862,7 +862,7 @@ let generalize_dependent_of x hyp =
   Proofview.Goal.enter (fun g ->
       tclMAP
         (function
-          | LocalAssum (_, {Context.binder_name = id}, t)
+          | LocalAssum ({Context.binder_name = id}, t)
             when (not (Id.equal id hyp))
                  && Termops.occur_var (Proofview.Goal.env g)
                       (Proofview.Goal.sigma g) x t ->

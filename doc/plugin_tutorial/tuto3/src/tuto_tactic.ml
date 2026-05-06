@@ -102,7 +102,7 @@ let two_lambda_pattern sigma term =
   function like *)
 let get_type_of_hyp env id =
   match EConstr.lookup_named id env with
-  | LocalAssum (_, _, ty) -> ty
+  | LocalAssum (_, ty) -> ty
   | LocalDef _ -> CErrors.user_err (let open Pp in
                              str (Names.Id.to_string id) ++
                              str " is not a plain hypothesis")

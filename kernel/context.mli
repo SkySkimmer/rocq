@@ -225,17 +225,9 @@ sig
   (** Representation of {e local declarations}. *)
   module Declaration :
   sig
-    type status = SecVar | ProofVar
-
-    val eq_status : status -> status -> bool
-
     type ('constr, 'types, 'r) pt =
-      | LocalAssum of status * (Id.t,'r) pbinder_annot * 'types             (** identifier, type *)
-      | LocalDef of status * (Id.t,'r) pbinder_annot * 'constr * 'types    (** identifier, value, type *)
-
-    val get_status : _ pt -> status
-
-    val is_secvar : _ pt -> bool
+      | LocalAssum of (Id.t,'r) pbinder_annot * 'types             (** identifier, type *)
+      | LocalDef of (Id.t,'r) pbinder_annot * 'constr * 'types    (** identifier, value, type *)
 
     val get_annot : (_,_,'r) pt -> (Id.t,'r) pbinder_annot
 
@@ -250,7 +242,7 @@ sig
 
     val get_relevance : ('c, 't, 'r) pt -> 'r
 
-    (** Set the identifier that is bound by a given declaration. status becomes [ProofVar]. *)
+    (** Set the identifier that is bound by a given declaration. *)
     val set_id : Id.t -> ('c, 't, 'r) pt -> ('c, 't, 'r) pt
 
     (** Return [true] iff a given declaration is a local assumption. *)
@@ -269,8 +261,7 @@ sig
     val equal : ('r -> 'r -> bool) -> ('c -> 'c -> bool) ->
       ('c, 'c, 'r) pt -> ('c, 'c, 'r) pt -> bool
 
-    (** Map the identifier bound by a given declaration.
-        Status becomes [ProofVar] if the id changes (physical equality). *)
+    (** Map the identifier bound by a given declaration. *)
     val map_id : (Id.t -> Id.t) -> ('c, 't, 'r) pt -> ('c, 't, 'r) pt
 
     (** Map all terms in a given declaration. *)
@@ -288,8 +279,8 @@ sig
     (** Reduce all terms in a given declaration to a single value. *)
     val fold_constr : ('c -> 'a -> 'a) -> ('c, 'c, 'r) pt -> 'a -> 'a
 
-    val to_tuple : ('c, 't, 'r) pt -> status * (Id.t,'r) pbinder_annot * 'c option * 't
-    val of_tuple : status * (Id.t,'r) pbinder_annot * 'c option * 't -> ('c, 't, 'r) pt
+    val to_tuple : ('c, 't, 'r) pt -> (Id.t,'r) pbinder_annot * 'c option * 't
+    val of_tuple : (Id.t,'r) pbinder_annot * 'c option * 't -> ('c, 't, 'r) pt
 
     (** Turn [LocalDef] into [LocalAssum], identity otherwise. *)
     val drop_body : ('c, 't, 'r) pt -> ('c, 't, 'r) pt

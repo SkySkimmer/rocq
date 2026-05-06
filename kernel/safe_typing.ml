@@ -735,12 +735,12 @@ let safe_push_named d env =
       let _ = Environ.lookup_named id env in
       CErrors.user_err Pp.(pr_sequence str ["Identifier"; Id.to_string id; "already defined."])
     with Not_found -> () in
-  Environ.push_named d env
+  Environ.push_named SecVar d env
 
 let push_named_def (id,de) senv =
   let sections = get_section senv.sections in
   let c, r, typ = Constant_typing.infer_local_def senv.env id de in
-  let d = LocalDef (SecVar, Context.make_annot id r, c, typ) in
+  let d = LocalDef (Context.make_annot id r, c, typ) in
   let env'' = safe_push_named d senv.env in
   let sections = Section.push_local d sections in
   { senv with sections=Some sections; env = env'' }
@@ -748,7 +748,7 @@ let push_named_def (id,de) senv =
 let push_named_assum (x,t) senv =
   let sections = get_section senv.sections in
   let t, r = Constant_typing.infer_local_assum senv.env t in
-  let d = LocalAssum (SecVar, Context.make_annot x r, t) in
+  let d = LocalAssum (Context.make_annot x r, t) in
   let sections = Section.push_local d sections in
   let env'' = safe_push_named d senv.env in
   { senv with sections=Some sections; env = env'' }
