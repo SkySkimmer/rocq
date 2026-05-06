@@ -88,19 +88,20 @@ module ReductionBehaviour = struct
     | UnfoldWhen x -> UnfoldWhen (more_args_when k x)
     | UnfoldWhenNoMatch x -> UnfoldWhenNoMatch (more_args_when k x)
 
-  type table = Cpred.t * t Cmap.t
+  type table = Cpred.t * t QConstant.Map.t
 
 (* We need to have a fast way to know the set of all constants that
   have the NeverUnfold flag.  Therefore, the table has a distinct subpart
   that is this set. *)
   let table =
-    Summary.ref ((Cpred.empty, Cmap.empty)) ~name:"reductionbehaviour"
+    Summary.ref ((Cpred.empty, QConstant.Map.empty)) ~name:"reductionbehaviour"
 
   let load _ (_,(r, b)) =
+    let env = Global.env () in
     table := (match b with
-                | None -> Cpred.remove r (fst !table), Cmap.remove r (snd !table)
-                | Some NeverUnfold -> Cpred.add r (fst !table), Cmap.remove r (snd !table)
-                | Some b -> Cpred.remove r (fst !table), Cmap.add r b (snd !table))
+                | None -> Cpred.remove r (fst !table), QConstant.Map.remove env r (snd !table)
+                | Some NeverUnfold -> Cpred.add r (fst !table), QConstant.Map.remove env r (snd !table)
+                | Some b -> Cpred.remove r (fst !table), QConstant.Map.add env r b (snd !table))
 
   let cache o = load 1 o
 
@@ -139,7 +140,7 @@ module ReductionBehaviour = struct
     if Cpred.mem r (fst table) then
       Some NeverUnfold
     else
-      Cmap.find_opt r (snd table)
+      QConstant.Map.find_opt (Global.env ()) r (snd table)
 
   let print_from_db table ref =
     let open Pp in
@@ -178,7 +179,7 @@ module ReductionBehaviour = struct
   module Db = struct
     type t = table
     let get () = !table
-    let empty = (Cpred.empty, Cmap.empty)
+    let empty = (Cpred.empty, QConstant.Map.empty)
     let print = print_from_db
     let all_never_unfold table = fst table
   end
