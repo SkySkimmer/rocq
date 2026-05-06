@@ -618,7 +618,13 @@ module Projection : sig
 end
 
 module PRset : CSig.USetS with type elt = Projection.Repr.t
-module PRmap : Map.UExtS with type key = Projection.Repr.t and module Set := PRset
+[@@ocaml.deprecated "(9.3) This will switch to user ordering at some point in \
+the future. In the meantime either use the _env variant or the Q-variant from \
+Environ, depending on the desired semantics."]
+module PRmap : Map.UExtS with type key = Projection.Repr.t and module Set := PRset [@@ocaml.warning "-3"]
+[@@ocaml.deprecated "(9.3) This will switch to user ordering at some point in \
+the future. In the meantime either use the _env variant or the Q-variant from \
+Environ, depending on the desired semantics."]
 
 module PRset_env : CSig.USetS with type elt = Projection.Repr.t
 module PRmap_env : Map.UExtS with type key = Projection.Repr.t and module Set := PRset_env

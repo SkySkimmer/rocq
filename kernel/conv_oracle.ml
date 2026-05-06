@@ -34,6 +34,9 @@ let is_transparent = function
 | Level 0 -> true
 | _ -> false
 
+module PRmap = HMap.Make(Projection.Repr.CanOrd)
+(* TODO: should we hand-canonize without the env, or just change the semantics? *)
+
 type oracle = {
   var_opacity : level Id.Map.t;
   cst_opacity : level Cmap.t;
