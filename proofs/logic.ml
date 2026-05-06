@@ -82,7 +82,7 @@ let reorder_context env sigma sign ord =
     user_err Pp.(str "Order list has duplicates");
   let rec step ord expected ctxt_head moved_hyps ctxt_tail =
     match ord with
-      | [] -> List.rev ctxt_tail @ ctxt_head
+      | [] -> List.fold_left (fun accu decl -> EConstr.push_named_context_val decl accu) ctxt_head ctxt_tail
       | top::ord' when mem_q top moved_hyps ->
           let ((d,h),mh) = find_q top moved_hyps in
           if occur_vars_in_decl env sigma h d then
@@ -94,9 +94,9 @@ let reorder_context env sigma sign ord =
                   (global_vars_set_of_decl env sigma d))) ++ str ".");
           step ord' expected ctxt_head mh (d::ctxt_tail)
       | _ ->
-          (match ctxt_head with
-            | [] -> error_no_such_hypothesis env sigma (List.hd ord)
-            | d :: ctxt ->
+          (match EConstr.match_named_context_val ctxt_head with
+            | None -> error_no_such_hypothesis env sigma (List.hd ord)
+            | Some (d, ctxt) ->
                 let x = NamedDecl.get_id d in
                 if Id.Set.mem x expected then
                   step ord (Id.Set.remove x expected)
@@ -112,8 +112,7 @@ match ord with
   (* Single variable-free definitions need not be reordered *)
   sign
 | _ :: _ :: _ ->
-  let open EConstr in
-  val_of_named_context (reorder_context env sigma (named_context_of_val sign) ord)
+  reorder_context env sigma sign ord
 
 let check_decl_position env sigma sign d =
   let open EConstr in
