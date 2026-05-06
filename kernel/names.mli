@@ -396,11 +396,15 @@ end
    the others consider an order on canonical part of names*)
 module Cpred : Predicate.S with type elt = Constant.t
 module Cset : CSig.USetS with type elt = Constant.t
+[@@ocaml.deprecated "(9.3) This will switch to user ordering at some point in \
+the future. In the meantime either use the _env variant or the Q-variant from \
+Environ, depending on the desired semantics."]
 module Cset_env  : CSig.USetS with type elt = Constant.t
 
-module Cmap : Map.UExtS with type key = Constant.t and module Set := Cset
-(** A map whose keys are constants (values of the {!Constant.t} type).
-    Keys are ordered wrt. "canonical form" of the constant. *)
+module Cmap : Map.UExtS with type key = Constant.t and module Set := Cset [@@ocaml.warning "-3"]
+[@@ocaml.deprecated "(9.3) This will switch to user ordering at some point in \
+the future. In the meantime either use the _env variant or the Q-variant from \
+Environ, depending on the desired semantics."]
 
 module Cmap_env : Map.UExtS with type key = Constant.t and module Set := Cset_env
 (** A map whose keys are constants (values of the {!Constant.t} type).
