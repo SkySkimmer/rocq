@@ -34,6 +34,7 @@ let is_transparent = function
 | Level 0 -> true
 | _ -> false
 
+module Cmap = HMap.Make(Constant.CanOrd)
 module PRmap = HMap.Make(Projection.Repr.CanOrd)
 (* TODO: should we hand-canonize without the env, or just change the semantics? *)
 
