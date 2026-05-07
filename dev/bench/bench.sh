@@ -51,6 +51,7 @@ check_variable () {
 : "${timeout:=3h}"
 : "${coq_opam_packages:=rocq-stdlib rocq-bignums coq-hott coq-performance-tests-lite coq-engine-bench-lite rocq-elpi rocq-mathcomp-boot rocq-mathcomp-order rocq-mathcomp-ssreflect rocq-mathcomp-fingroup rocq-mathcomp-algebra rocq-mathcomp-solvable rocq-mathcomp-field rocq-mathcomp-character coq-mathcomp-odd-order coq-mathcomp-analysis coq-math-classes coq-corn coq-compcert rocq-equations rocq-metarocq-utils rocq-metarocq-common rocq-metarocq-template rocq-metarocq-pcuic rocq-metarocq-safechecker rocq-metarocq-erasure rocq-metarocq-translations coq-color coq-coqprime coq-coqutil coq-bedrock2 coq-rewriter coq-fiat-core coq-fiat-parsers coq-fiat-crypto-with-bedrock coq-unimath coq-coquelicot coq-iris-examples coq-verdi coq-verdi-raft coq-fourcolor coq-rewriter-perf-SuperFast coq-vst coq-category-theory coq-neural-net-interp-computed-lite}"
 : "${coq_native:=}"
+: "${auto_overlays:=1}"
 
 # example: coq-hott.dev git+https://github.com/some-user/coq-hott#some-branch
 # (make sure to include the version for the opam package, note that just https won't work)
@@ -92,6 +93,36 @@ log_dir=$working_dir/logs
 mkdir "$log_dir"
 export COQ_LOG_DIR=$log_dir
 
+# maps CI project (first arg of "overlay")
+# to space separated list of opam packages which use the project's url
+declare -A auto_overlay_map
+auto_overlay_map[elpi]="rocq-elpi"
+auto_overlay_map[equations]="rocq-equations"
+
+if [ "$auto_overlays" ]; then
+  CI_PULL_REQUEST="${CI_COMMIT_REF_NAME#pr-}"
+  overlay() {
+    local project=$1
+    local ov_url=$2
+    local ov_ref=$3
+    local ov_prnumber=$4
+    local ov_prbranch=$5
+    : "${ov_prbranch:=$ov_ref}"
+
+    if [ "$CI_PULL_REQUEST" = "$ov_prnumber" ]; then
+      for package in ${auto_overlay_map[$project]}; do
+        new_opam_override_urls="$package.dev git+$ov_url#$ov_ref $new_opam_override_urls"
+      done
+    fi
+  }
+  for overlay in dev/ci/user-overlays/*.sh; do
+    # the directory can be empty
+    if [ -e "$overlay" ]; then
+      . "$overlay"
+    fi
+  done
+fi
+
 echo "DEBUG: ocaml -version = $(ocaml -version)"
 echo "DEBUG: working_dir = $working_dir"
 echo "DEBUG: new_ocaml_switch = $new_ocaml_switch"
@@ -111,6 +142,7 @@ echo "DEBUG: old_opam_override_urls = $old_opam_override_urls"
 echo "DEBUG: coq_pr_number = $coq_pr_number"
 echo "DEBUG: coq_pr_comment_id = $coq_pr_comment_id"
 echo "DEBUG: coq_native = $coq_native"
+echo "DEBUG: auto_overlays = $auto_overlays"
 
 # We put local binaries such as opam in .bin and extend PATH
 BIN=$(pwd)/.bin
