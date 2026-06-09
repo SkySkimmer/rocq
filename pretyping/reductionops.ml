@@ -1410,14 +1410,14 @@ let format_steps steps =
 
 (* future work: print percentages, print step counts in children
    nicer formatting (some kind of table?) *)
-let print_recorded_steps tab =
+let print_recorded_steps ~hd tab =
   let open CClosure.RecordedSteps in
   if not @@ has_recorded_steps tab then ()
   else
     NewProfile.profile "print_recorded_steps" (fun () ->
         let steps = get_recorded_steps tab in
         let pp = format_steps steps in
-        Feedback.msg_info Pp.(hv 2 (str "[lazy]" ++ spc() ++ v 0 pp)))
+        Feedback.msg_info Pp.(hv 2 (str hd ++ spc() ++ v 0 pp)))
       ()
 
 (* lazy reduction functions. The infos must be created for each term *)
@@ -1431,7 +1431,7 @@ let clos_norm_flags flgs env sigma t =
       tab
       (Esubst.subs_id 0, UVars.Instance.empty) (EConstr.Unsafe.to_constr t))
     in
-    print_recorded_steps tab;
+    print_recorded_steps ~hd:"[lazy]" tab;
     res
   with e when is_sync_anomaly e ->
     let _, info = Exninfo.capture e in
@@ -1446,7 +1446,7 @@ let clos_whd_flags flgs env sigma t =
       tab
       (CClosure.inject (EConstr.Unsafe.to_constr t)))
     in
-    print_recorded_steps tab;
+    print_recorded_steps ~hd:"[lazy]" tab;
     res
   with e when is_sync_anomaly e ->
     let _, info = Exninfo.capture e in

@@ -148,6 +148,12 @@ type profile_mode = StepsOnly | StepsAndTime
 
 val create_tab : ?profiling:profile_mode -> unit -> clos_tab
 
+type step_kind = Beta | Delta | Match | Fix
+
+val record_step : clos_tab -> step_kind -> current_context -> unit
+
+val update_time : ?force:bool -> clos_tab -> current_context -> unit
+
 module RecordedSteps : sig
 
   val sample_rate : (int * int) ref

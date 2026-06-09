@@ -314,3 +314,5 @@ val eta_expand : env -> evar_map -> etypes -> etypes -> etypes
 
 (* Eta expand the instantiation of a context *)
 val eta_expand_instantiation : env -> evar_map -> constr array -> rel_context -> constr array
+
+val print_recorded_steps : hd:string -> CClosure.clos_tab -> unit
