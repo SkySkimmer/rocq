@@ -1,0 +1,17 @@
+File "./output/SafeRequireImport.v", line 7, characters 11-15:
+The command has indeed failed with message:
+The reference flip was not found in the current environment.
+CRelationClasses.flip
+     : forall A B C : Type, (A -> B -> C) -> B -> A -> C
+flip
+     : forall A B C : Type, (A -> B -> C) -> B -> A -> C
+respectful
+     : forall A B : Type, crelation A -> crelation B -> crelation (A -> B)
+arrow
+     : Type -> Type -> Type
+unary_operation
+     : Type -> Type
+File "./output/SafeRequireImport.v", line 30, characters 0-30:
+The command has indeed failed with message:
+Cannot unsafe-require library Corelib.Classes.CRelationClasses
+because it was previously required with (safe).

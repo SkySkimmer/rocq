@@ -1667,12 +1667,21 @@ let warn_require_in_section =
     (fun () -> strbrk "Use of “Require” inside a section is fragile." ++ spc() ++
                strbrk "It is not recommended to use this functionality in finished proof scripts.")
 
-let vernac_safe_require_interp needed modrefl qidl =
-if Lib.sections_are_opened () then warn_require_in_section ();
+let vernac_safe_require_interp needed modrefl export qidl =
+  if Lib.sections_are_opened () then warn_require_in_section ();
   if Dumpglob.dump () then
     List.iter2 (fun {CAst.loc} dp -> Dumpglob.dump_libref ?loc dp "lib") qidl modrefl;
   Coq_config.gc_ramp_up @@ fun () ->
-  Library.safe_require_interp needed
+  (* Load the closure (each library full- or safe-registered per its computed
+     mode) through the unified require object. *)
+  Library.require_library needed;
+  (* Import/Export: goes through the standard [import_module] path, which
+     our Declaremods hook redirects to the safe short-name walk. *)
+  Option.iter (fun export ->
+      List.iter (fun m ->
+          import_module_with_filter ~export Libobject.unfiltered (MPfile m) ImportAll)
+        modrefl)
+    export
 
 let vernac_require_interp needed modrefl export qidl =
   if Lib.sections_are_opened () then warn_require_in_section ();
@@ -2718,10 +2727,10 @@ let translate_vernac_synterp ?loc ~atts v = let open Vernactypes in match v with
     unsupported_attributes atts;
     vernac_end_segment lid
 
-  | EVernacSafeRequire (needed, modrefl, qidl) ->
+  | EVernacSafeRequire (needed, modrefl, export, qidl) ->
     vtdefault (fun () ->
         unsupported_attributes atts;
-        vernac_safe_require_interp needed modrefl qidl)
+        vernac_safe_require_interp needed modrefl export qidl)
 
   | EVernacRequire (needed, modrefl, export, qidl) ->
     vtdefault(fun () ->

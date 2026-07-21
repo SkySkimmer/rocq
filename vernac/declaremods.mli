@@ -84,6 +84,11 @@ val import_modules : export:Lib.export_flag -> (Libobject.open_filter * ModPath.
 
 val register_library : library_name -> library_objects -> unit
 
+(** Register a [Require (safe)] library: push its fully-qualified-only
+    names by walking the kernel module structure (no libobject replay) and
+    record it as safe-loaded so a later [Import]/[Export] can find it. *)
+val register_safe_library : library_name -> Mod_declarations.module_body -> unit
+
 val close_section : unit -> unit
 
 end
@@ -136,6 +141,12 @@ val register_library :
   Safe_typing.compiled_library -> library_objects -> Safe_typing.vodigest ->
   Vmlibrary.on_disk ->
   unit
+
+(** Register a [Require (safe)] library: push its fully-qualified-only
+    names by walking the kernel module structure (no libobject replay) and
+    record it as safe-loaded so a later [Import]/[Export] can find it. The
+    caller must have already imported the library into the kernel. *)
+val register_safe_library : library_name -> Mod_declarations.module_body -> unit
 
 (** [import_module export mp] imports the module [mp].
    It modifies Nametab and performs the [open_object] function for

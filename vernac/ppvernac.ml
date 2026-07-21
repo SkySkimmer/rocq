@@ -1393,14 +1393,19 @@ let pr_synterp_vernac_expr v =
     return (
       keyword "Declare Custom Entry " ++ Id.print s
     )
-  | VernacSafeRequire (from, l) ->
+  | VernacSafeRequire (from, exp, l) ->
     let from = match from with
       | None -> mt ()
       | Some r -> keyword "From" ++ spc () ++ pr_module r ++ spc ()
     in
+    let exp = match exp with
+      | None -> mt ()
+      | Some export -> pr_export_flag export ++ spc ()
+    in
     return (
       hov 2
-        (from ++ keyword "Require" ++ str "(safe)" ++ spc() ++ prlist_with_sep sep pr_qualid l)
+        (from ++ keyword "Require" ++ str "(safe)" ++ spc() ++ exp ++
+         prlist_with_sep sep pr_qualid l)
     )
   | VernacRequire (from, exp, l) ->
     let from = match from with
