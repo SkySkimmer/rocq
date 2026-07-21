@@ -8,8 +8,8 @@ Print CRelationClasses.flip.
 (* universe-polymorphic constant: instances can be given explicitly *)
 Check CRelationClasses.flip@{Set Set Set}.
 
-(* a monomorphic Type-former from the same library, showing its universe
-   constraints were imported (the application typechecks) *)
+(* a monomorphic Type-former from the same library, showing its universes
+   were imported (the application typechecks) *)
 Check CRelationClasses.arrow.
 Check (CRelationClasses.arrow nat nat).
 
@@ -17,22 +17,23 @@ Check (CRelationClasses.arrow nat nat).
    under safe loading *)
 Print Assumptions CRelationClasses.complement_inverse.
 
-(* Inductive types and their constructors are available by fully-qualified
-   name; short names are not registered. *)
+(* Inductive types and their constructors are available qualified by (at
+   least) the name of the file that defines them, as with plain Require;
+   bare short names are not available. *)
 Require (safe) Corelib.Numbers.BinNums.
 
 Fail Check positive.
-Check Corelib.Numbers.BinNums.positive.
-About Corelib.Numbers.BinNums.xI.
-Locate Corelib.Numbers.BinNums.positive.
-Locate Corelib.Numbers.BinNums.xH.
+Check BinNums.positive.
+About BinNums.xI.
+Locate BinNums.positive.
+Locate BinNums.xH.
 
 (* pattern-matching / unification with a safe-required inductive typechecks *)
-Check (fun p : Corelib.Numbers.BinNums.positive =>
+Check (fun p : BinNums.positive =>
          match p with
-         | Corelib.Numbers.BinNums.xI q => q
-         | Corelib.Numbers.BinNums.xO q => q
-         | Corelib.Numbers.BinNums.xH => Corelib.Numbers.BinNums.xH
+         | BinNums.xI q => q
+         | BinNums.xO q => q
+         | BinNums.xH => BinNums.xH
          end).
 
 (* Nested modules: PosDef contains an inner module [Pos] with its own

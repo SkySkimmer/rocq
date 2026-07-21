@@ -4,10 +4,7 @@ set -e
 
 cd misc/coqdep-require-safe
 
-code=0
-$coqdep -worker @ROCQWORKER@ -Q . 'Pfx' ./*.v > stdout 2> stderr || code=$?
+$coqdep -worker @ROCQWORKER@ -Q . Pfx Foo.v bare.v frombare.v fromsafe.v safe.v > stdout 2> stderr
 
 diff -u stdout.ref stdout
 diff -u stderr.ref stderr
-
-exit $code
