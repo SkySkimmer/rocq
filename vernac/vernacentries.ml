@@ -1668,11 +1668,11 @@ let warn_require_in_section =
                strbrk "It is not recommended to use this functionality in finished proof scripts.")
 
 let vernac_safe_require_interp needed modrefl qidl =
-if Lib.sections_are_opened () then warn_require_in_section ();
+  if Lib.sections_are_opened () then warn_require_in_section ();
   if Dumpglob.dump () then
     List.iter2 (fun {CAst.loc} dp -> Dumpglob.dump_libref ?loc dp "lib") qidl modrefl;
   Coq_config.gc_ramp_up @@ fun () ->
-  Library.safe_require_interp needed
+  Library.require_library needed
 
 let vernac_require_interp needed modrefl export qidl =
   if Lib.sections_are_opened () then warn_require_in_section ();

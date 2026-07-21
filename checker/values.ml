@@ -613,7 +613,7 @@ let v_compiled_lib =
 (** Toplevel structures in a vo (see Cic.mli) *)
 
 let v_libsum =
-  v_tuple_c ("summary", [|v_dp;v_deps;v_string;v_any|])
+  v_tuple_c ("summary", [|v_dp;v_deps;v_string;v_any;v_set v_dp|])
 
 let v_lib =
   v_tuple_c ("library",[|v_compiled_lib;v_any;v_any|])
