@@ -458,60 +458,12 @@ let require_library_syntax_from_dirpath ~intern modrefl =
   Lib.add_leaf (in_require_syntax needed);
   List.map snd needed
 
-(* safe require *)
-
-let safe_require_mind_names vis sp mind mib =
-  mib.Declarations.mind_packets |> Array.iteri @@ fun ind (mip:Declarations.one_inductive_body) ->
-  let ind = (mind, ind) in
-  let () = Nametab.push vis (Libnames.add_path_suffix sp mip.mind_typename) (IndRef ind) in
-  mip.mind_consnames |> Array.iteri @@ fun ctor cna ->
-  Nametab.push vis (Libnames.add_path_suffix sp cna) (ConstructRef (ind, ctor+1))
-
-let rec safe_require_mod_names ~stage i sp mp mb =
-  let () = match stage with
-    | Summary.Stage.Synterp -> Nametab.push_module (Until i) sp mp
-    | Interp -> ()
-  in
-  match Mod_declarations.mod_type mb with
-  | MoreFunctor _ -> ()
-  | NoFunctor contents ->
-    contents |> List.iter @@ fun (lab, contents) ->
-    match contents with
-    | Declarations.SFBrules _ ->
-      ()
-    | SFBconst _ ->
-      begin match stage with
-      | Synterp -> ()
-      | Interp ->
-        let kn = Global.constant_of_delta_kn (KerName.make mp lab) in
-        let sp = Libnames.add_path_suffix sp lab in
-        Nametab.push (Until (i+1)) sp (ConstRef kn)
-      end
-    | SFBmind mib ->
-      begin match stage with
-      | Synterp -> ()
-      | Interp ->
-        let mind = Global.mind_of_delta_kn (KerName.make mp lab) in
-        safe_require_mind_names (Until (i+1)) sp mind mib
-      end
-    | SFBmodtype _ ->
-      begin match stage with
-      | Synterp ->
-        let mp = ModPath.MPdot (mp, lab) in
-        let sp = Libnames.add_path_suffix sp lab in
-        Nametab.push_modtype (Until (i+1)) sp mp
-      | Interp -> ()
-      end
-    | SFBmodule mb ->
-      safe_require_mod_names ~stage (i+1) (Libnames.add_path_suffix sp lab) (MPdot (mp,lab)) mb
-
-let safe_require_names ~stage dp mb =
-  let mp = ModPath.MPfile dp in
-  let sp = Libnames.make_path0 dp in
-  safe_require_mod_names ~stage 1 sp mp mb
+(* safe require: the kernel-side import and the name-pushing walk live in
+   declaremods.ml (see [Declaremods.*.register_safe_library]); here we only
+   drive them and maintain library.ml's bookkeeping tables. *)
 
 let cache_one_safe_require_synterp (root, m) =
-  safe_require_names ~stage:Synterp m.library_name
+  Declaremods.Synterp.register_safe_library m.library_name
     (Safe_typing.module_of_library m.library_data.md_compiled);
   register_loaded_library ~root SafeLoaded m
 
@@ -525,12 +477,11 @@ let cache_one_safe_require_interp m =
          effects but the kernel did not forget the library. *)
       ignore(Global.lookup_module mp);
     with Not_found ->
-      (* $2 $5 $4 *)
       let mp' = Global.import compiled m.library_vm m.library_digests in
       if not (ModPath.equal mp mp') then
         anomaly (Pp.str "Unexpected disk module name.")
   in
-  safe_require_names ~stage:Interp m.library_name
+  Declaremods.Interp.register_safe_library m.library_name
     (Safe_typing.module_of_library compiled);
   register_native_library m.library_name
 

@@ -226,6 +226,7 @@ module type StagedModS = sig
   val load_keep : int -> full_path -> ModPath.t -> keep_objects -> unit
   val load_escape : int -> full_path -> ModPath.t -> escape_objects -> unit
   val load_module : int -> full_path -> ModPath.t -> substitutive_objects -> unit
+  val load_safe_library : DirPath.t -> Mod_declarations.module_body -> unit
   val import_modules : export:Lib.export_flag -> (open_filter * ModPath.t) list -> unit
 
   val add_leaf : Libobject.t -> unit
@@ -436,6 +437,115 @@ module ModObjs :
    let all () = !table
  end
 
+(** {6 SafeLibs : the set of libraries loaded through [Require (safe)]}
+
+   A [Require (safe)] library is imported in the kernel but no libobject
+   replay is performed, so it has no entry in [ModObjs] and cannot be
+   imported through the usual object-collection machinery. We record the
+   set of such libraries (per stage) so that [Import]/[Export] of a
+   safe-loaded library can push names directly by walking the kernel
+   module structure instead. *)
+
+module SafeLibs :
+ sig
+   val register : DirPath.t -> Mod_declarations.module_body -> unit
+   val find : DirPath.t -> Mod_declarations.module_body option
+ end =
+ struct
+   let table =
+     Summary.ref ~stage:Actions.stage (DirPath.Map.empty : Mod_declarations.module_body DirPath.Map.t)
+       ~name:(Actions.modobjs_table_name ^ "-SAFE-LIBS")
+   let register dp mb = (table := DirPath.Map.add dp mb !table)
+   let find dp = DirPath.Map.find_opt dp !table
+ end
+
+(** {6 Name pushing for [Require (safe)] libraries}
+
+   These walk the kernel module structure of a safe-loaded library and
+   push short names into the nametab. The walk carries the module-nesting
+   depth [i] (the library module is depth 1); an object directly inside a
+   module at depth [i] has [i] path components stripped from its full name,
+   hence a "[Until]-index" of [i+1].
+
+   The visibility to push at is computed by [vis] from that [Until]-index:
+   - at load time, [Until k], so only fully-qualified(-ish) names are
+     visible (as a plain [Require (safe)] should);
+   - at import time, [Exactly (k-1)], matching the depth [open_object]
+     would use for the same object during a normal [Import] (a top-level
+     constant of the library becomes visible under its bare name). The top
+     library module name itself ([Until]-index 1) is not (re-)pushed on
+     import, mirroring normal library import which never re-pushes it.
+
+   Constants/inductives/constructors exist only at the [Interp] stage;
+   module and module type short names at [Synterp]. *)
+
+let safe_require_mind_names vis sp mind mib =
+  mib.Declarations.mind_packets |> Array.iteri @@ fun ind (mip:Declarations.one_inductive_body) ->
+  let ind = (mind, ind) in
+  let () = Option.iter (fun vis -> Nametab.push vis (Libnames.add_path_suffix sp mip.mind_typename) (GlobRef.IndRef ind)) vis in
+  mip.mind_consnames |> Array.iteri @@ fun ctor cna ->
+  Option.iter (fun vis -> Nametab.push vis (Libnames.add_path_suffix sp cna) (GlobRef.ConstructRef (ind, ctor+1))) vis
+
+let rec safe_require_mod_names ~vis i sp mp mb =
+  let () = match Actions.stage with
+    | Summary.Stage.Synterp -> Option.iter (fun v -> Nametab.push_module v sp mp) (vis i)
+    | Interp -> ()
+  in
+  match Mod_declarations.mod_type mb with
+  | MoreFunctor _ -> ()
+  | NoFunctor contents ->
+    contents |> List.iter @@ fun (lab, contents) ->
+    match contents with
+    | Declarations.SFBrules _ ->
+      ()
+    | SFBconst _ ->
+      begin match Actions.stage with
+      | Synterp -> ()
+      | Interp ->
+        let kn = Global.constant_of_delta_kn (KerName.make mp lab) in
+        let sp = Libnames.add_path_suffix sp lab in
+        Option.iter (fun v -> Nametab.push v sp (GlobRef.ConstRef kn)) (vis (i+1))
+      end
+    | SFBmind mib ->
+      begin match Actions.stage with
+      | Synterp -> ()
+      | Interp ->
+        let mind = Global.mind_of_delta_kn (KerName.make mp lab) in
+        safe_require_mind_names (vis (i+1)) sp mind mib
+      end
+    | SFBmodtype _ ->
+      begin match Actions.stage with
+      | Synterp ->
+        let mp = ModPath.MPdot (mp, lab) in
+        let sp = Libnames.add_path_suffix sp lab in
+        Option.iter (fun v -> Nametab.push_modtype v sp mp) (vis (i+1))
+      | Interp -> ()
+      end
+    | SFBmodule mb ->
+      safe_require_mod_names ~vis (i+1) (Libnames.add_path_suffix sp lab) (MPdot (mp,lab)) mb
+
+let safe_require_names ~vis dp mb =
+  let mp = ModPath.MPfile dp in
+  let sp = Libnames.make_path0 dp in
+  safe_require_mod_names ~vis 1 sp mp mb
+
+(** Push the fully-qualified-only ([Until]) names of a safe-loaded library
+    and record it as safe-loaded (so a later [Import]/[Export] can find its
+    module structure). [mb] is the kernel module body of the library, which
+    at the [Synterp] stage cannot be recovered from the kernel (it is not
+    imported there) and so is supplied by the caller. *)
+let load_safe_library dp mb =
+  safe_require_names ~vis:(fun k -> Some (Nametab.Until k)) dp mb;
+  SafeLibs.register dp mb
+
+(** Push the short ([Exactly]) names of a safe-loaded library, as done by
+    [Import]. Known divergence from a real [Import]: the kernel structure
+    carries no vernacular locality info ([ImportNeedQualified] from a
+    [Local Definition] lives only in libobjects), so this may expose short
+    names that a real [Import] would keep qualified-only. *)
+let import_safe_library dp mb =
+  safe_require_names ~vis:(fun k -> if k <= 1 then None else Some (Nametab.Exactly (k-1))) dp mb
+
  open Expand
 
 (** {6 Declaration of module substitutive objects} *)
@@ -535,6 +645,13 @@ let mark_object f obj (exports,acc) =
   (exports, (f,obj)::acc)
 
 let rec collect_module (f,mp) acc =
+  (* A [Require (safe)] library has no [ModObjs] entry; importing it pushes
+     short names directly by walking the kernel structure. This must take
+     precedence over the (missing) [ModObjs] lookup. Filters are ignored:
+     there are no libobjects/categories to filter on. *)
+  match (match mp with MPfile dp -> Option.map (fun mb -> (dp, mb)) (SafeLibs.find dp) | _ -> None) with
+  | Some (dp, mb) -> import_safe_library dp mb; acc
+  | None ->
   try
     (* May raise Not_found for unknown module and for functors *)
     let modobjs = ModObjs.get mp in
@@ -1557,6 +1674,9 @@ let register_library dir (objs:library_objects) =
   SynterpVisitor.load_escape 2 sp mp escapeobjs;
   SynterpVisitor.load_keep 2 sp mp keepobjs
 
+let register_safe_library dir mb =
+  SynterpVisitor.load_safe_library dir mb
+
 let import_modules = SynterpVisitor.import_modules
 
 let import_module f ~export mp =
@@ -1648,6 +1768,9 @@ let register_library dir cenv (objs:library_objects) digest vmtab =
   InterpVisitor.load_module 1 sp mp ([],Objs sobjs);
   InterpVisitor.load_escape 1 sp mp escapeobjs;
   InterpVisitor.load_keep 1 sp mp keepobjs
+
+let register_safe_library dir mb =
+  InterpVisitor.load_safe_library dir mb
 
 let import_modules = InterpVisitor.import_modules
 
