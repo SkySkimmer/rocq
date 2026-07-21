@@ -55,7 +55,7 @@ type synterp_entry =
   | EVernacNotation of { local : bool; decl : Metasyntax.notation_interpretation_decl }
   | EVernacBeginSection of lident
   | EVernacEndSegment of lident
-  | EVernacSafeRequire of Library.library_t list * DirPath.t list * qualid list
+  | EVernacSafeRequire of Library.library_t list * DirPath.t list * export_flag option * qualid list
   | EVernacRequire of
       Library.library_t list * DirPath.t list * export_with_cats option * (qualid * import_filter_expr) list
   | EVernacImport of (export_flag *
@@ -314,10 +314,18 @@ let require_locate from qidl =
       | Error LibNotFound -> Loc.raise ?loc:qid.loc (NotFoundLibrary (root, qid)))
     qidl
 
-let synterp_safe_require ~intern from qidl =
+let synterp_safe_require ~intern from export qidl =
   let modrefl = require_locate from qidl in
   Coq_config.gc_ramp_up @@ fun () ->
   let needed = Library.safe_require_synterp ~intern modrefl in
+  (* Import/Export goes through the standard [import_module] path: our
+     hook in Declaremods pushes the short names of a safe-loaded library,
+     and [Export] records the usual [ExportObject] for re-export. *)
+  Option.iter (fun export ->
+      List.iter (fun (_, m) ->
+          Declaremods.Synterp.import_module Libobject.unfiltered ~export (MPfile m))
+        modrefl)
+    export;
   needed, List.map snd modrefl
 
 let synterp_require ~intern from export qidl =
@@ -420,9 +428,9 @@ let rec synterp ~intern ?loc ~atts v =
     | VernacEndSegment lid ->
       synterp_end_segment lid;
       EVernacEndSegment lid
-    | VernacSafeRequire (from, qidl) ->
-      let needed, modrefl = synterp_safe_require ~intern from qidl in
-      EVernacSafeRequire (needed, modrefl, qidl)
+    | VernacSafeRequire (from, export, qidl) ->
+      let needed, modrefl = synterp_safe_require ~intern from export qidl in
+      EVernacSafeRequire (needed, modrefl, export, qidl)
     | VernacRequire (from, export, qidl) ->
       let needed, modrefl = synterp_require ~intern from export qidl in
       EVernacRequire (needed, modrefl, export, qidl)
