@@ -21,11 +21,14 @@ open Names
 (** Type of libraries loaded in memory *)
 type library_t
 
+(** Whether a library of a required closure is fully loaded (its objects are
+    replayed) or only safe-loaded (imported kernel-side, full-qualified names
+    only). *)
+type require_mode = ModeFull | ModeSafe
+
 (** {6 ... }
     Require = load in the environment *)
-val require_library : library_t list -> unit
-
-val safe_require_interp : library_t list -> unit
+val require_library : (require_mode * library_t) list -> unit
 
 (** Intern from a .vo file located by libresolver *)
 module Intern : sig
@@ -41,15 +44,15 @@ end
 val intern_from_file : CUnix.physical_path ->
   (library_t, Exninfo.iexn) Result.t * Intern.Provenance.t
 
+(** Intern the dependency closure of the given roots, compute per-library
+    modes ([cmd_safe] is the command mode: [false] for [Require], [true] for
+    [Require (safe)]), register the syntactic part and return the interp-side
+    closure tagged with the computed modes. *)
 val require_library_syntax_from_dirpath
-  : intern:Intern.t
+  : cmd_safe:bool
+  -> intern:Intern.t
   -> DirPath.t Loc.located list
-  -> library_t list
-
-val safe_require_synterp
-  : intern:Intern.t ->
-  DirPath.t Loc.located list ->
-  library_t list
+  -> (require_mode * library_t) list
 
 (** {6 Start the compilation of a library } *)
 

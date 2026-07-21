@@ -55,9 +55,9 @@ type synterp_entry =
   | EVernacNotation of { local : bool; decl : Metasyntax.notation_interpretation_decl }
   | EVernacBeginSection of lident
   | EVernacEndSegment of lident
-  | EVernacSafeRequire of Library.library_t list * DirPath.t list * qualid list
+  | EVernacSafeRequire of (Library.require_mode * Library.library_t) list * DirPath.t list * qualid list
   | EVernacRequire of
-      Library.library_t list * DirPath.t list * export_with_cats option * (qualid * import_filter_expr) list
+      (Library.require_mode * Library.library_t) list * DirPath.t list * export_with_cats option * (qualid * import_filter_expr) list
   | EVernacImport of (export_flag *
       Libobject.open_filter) *
       (Names.ModPath.t CAst.t * import_filter_expr) list
@@ -317,20 +317,20 @@ let require_locate from qidl =
 let synterp_safe_require ~intern from qidl =
   let modrefl = require_locate from qidl in
   Coq_config.gc_ramp_up @@ fun () ->
-  let needed = Library.safe_require_synterp ~intern modrefl in
+  let needed = Library.require_library_syntax_from_dirpath ~cmd_safe:true ~intern modrefl in
   needed, List.map snd modrefl
 
 let synterp_require ~intern from export qidl =
   let modrefl = require_locate from (List.map fst qidl) in
   Coq_config.gc_ramp_up @@ fun () ->
-  let filenames = Library.require_library_syntax_from_dirpath ~intern modrefl in
+  let needed = Library.require_library_syntax_from_dirpath ~cmd_safe:false ~intern modrefl in
   Option.iter (fun (export,cats) ->
       let cats = synterp_import_cats cats in
       List.iter2 (fun (_, m) (_, f) ->
           import_module_syntax_with_filter ~export cats (MPfile m) f)
         modrefl qidl)
     export;
-    filenames, List.map snd modrefl
+    needed, List.map snd modrefl
 
 (*****************************)
 (* Auxiliary file management *)

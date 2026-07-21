@@ -285,6 +285,7 @@ type summary_disk = {
   md_deps : (compilation_unit_name * Safe_typing.vodigest) array;
   md_ocaml : string;
   md_info : library_info;
+  md_safe_deps : DirPath.Set.t;
 }
 
 type library_objects
