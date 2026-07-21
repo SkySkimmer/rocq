@@ -730,6 +730,47 @@ file is a particular case of a module called a *library file*.
 
       .. seealso:: Chapter :ref:`therocqcommands`
 
+.. cmd:: {? From @dirpath } Require ( safe ) {+ @qualid }
+   :name: Require (safe); From … Require (safe)
+
+   Loads a compiled file and all the files it depends on (recursively),
+   but only the kernel-level content is made available: the constants,
+   inductive types, constructors and modules that the library adds to the
+   kernel environment.  The libraries are located and their names resolved
+   exactly as for plain :cmd:`Require` (including the optional :n:`From @dirpath`
+   clause), but *no* :term:`libobject` is replayed.  In particular, this form
+   does not load any notation, coercion, hint, canonical structure, implicit
+   argument, ``ML`` plugin, or flag setting from the required libraries.
+
+   This is intended for loading untrusted or heavyweight libraries: since
+   nothing but the kernel content is processed, ill-behaved side effects of a
+   library (for instance abusive notations or flag changes) cannot affect the
+   current document, while its definitions can still be type-checked and used.
+
+   The loaded objects are only accessible through their *fully-qualified*
+   names; short names are not registered.  For example, after
+   `Require (safe) Corelib.Classes.CRelationClasses.` the constant is available
+   as :n:`Corelib.Classes.CRelationClasses.flip` (and, since local loadpaths
+   are searched, typically also as the shorter qualified prefixes) but not as
+   the bare `flip`.  There is no way to shorten these names with this command,
+   as :cmd:`Import` and :cmd:`Export` are not (yet) supported in this form.
+
+   Constants and inductive types loaded this way can be printed with
+   :cmd:`Print`, inspected with :cmd:`About` and :cmd:`Check`, located with
+   :cmd:`Locate`, used in terms, and their axioms reported by
+   :cmd:`Print Assumptions`.  The universe constraints they rely on are loaded,
+   so terms mentioning them typecheck.
+
+   A given library may be safe-required and later safe-required again (this is
+   a no-op), but a safe-loaded library cannot subsequently be loaded with a
+   plain :cmd:`Require`.
+
+   .. exn:: Cannot unsafe-require library @qualid because it was previously required with (safe).
+
+      A plain :cmd:`Require` was used on a library that had already been loaded
+      with :cmd:`Require (safe)`.  Loading only the kernel content and then
+      replaying the full library object is not supported.
+
 .. cmd:: Print Libraries
 
    This command displays the list of library files loaded in the
