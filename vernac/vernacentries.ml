@@ -1672,8 +1672,9 @@ let vernac_safe_require_interp needed modrefl export qidl =
   if Dumpglob.dump () then
     List.iter2 (fun {CAst.loc} dp -> Dumpglob.dump_libref ?loc dp "lib") qidl modrefl;
   Coq_config.gc_ramp_up @@ fun () ->
-  (* Load (kernel import + fully-qualified names, no libobject replay) *)
-  Library.safe_require_interp needed;
+  (* Load the closure (each library full- or safe-registered per its computed
+     mode) through the unified require object. *)
+  Library.require_library needed;
   (* Import/Export: goes through the standard [import_module] path, which
      our Declaremods hook redirects to the safe short-name walk. *)
   Option.iter (fun export ->
