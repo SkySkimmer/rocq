@@ -525,7 +525,6 @@ let cache_one_safe_require_interp m =
          effects but the kernel did not forget the library. *)
       ignore(Global.lookup_module mp);
     with Not_found ->
-      (* $2 $5 $4 *)
       let mp' = Global.import compiled m.library_vm m.library_digests in
       if not (ModPath.equal mp mp') then
         anomaly (Pp.str "Unexpected disk module name.")

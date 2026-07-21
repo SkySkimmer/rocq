@@ -730,6 +730,48 @@ file is a particular case of a module called a *library file*.
 
       .. seealso:: Chapter :ref:`therocqcommands`
 
+.. cmd:: {? From @dirpath } Require ( safe ) {+ @qualid }
+   :name: Require (safe); From … Require (safe)
+
+   Like :cmd:`Require`, but loads only what the kernel needs to typecheck
+   terms using the libraries: the constants, inductive types, constructors,
+   modules, module types and universes they add to the :term:`global
+   environment`.  None of the conveniences that libraries provide for
+   parsing, elaboration, printing and automation are loaded: no notation,
+   coercion, hint, canonical structure, :cmd:`Arguments` information
+   (implicit arguments, argument scopes, reduction behavior), OCaml plugin
+   or flag setting.  Loaded references can otherwise be used like any other
+   reference; for instance, arguments that the library declares implicit
+   must be given explicitly.
+
+   Names are accessible as after a plain :cmd:`Require` not followed by
+   :cmd:`Import` — qualified at least by the name of the file that defines
+   them — and cannot be shortened further, since :cmd:`Import` and
+   :cmd:`Export` are not supported for safe-required libraries.
+
+   .. rocqtop:: reset all
+
+      Require (safe) Corelib.Classes.CRelationClasses.
+      Check CRelationClasses.flip.
+      Fail Check flip.
+
+   The intended use is processing untrusted compiled files: validate the
+   file with ``rocqchk`` (see :ref:`therocqcommands`), then load it with
+   ``Require (safe)``, which is designed to consume only data that
+   ``rocqchk`` checks.  This correspondence has not been fully audited; in
+   particular ``rocqchk`` does not validate compiled VM and native-compute
+   data, so avoid :tacn:`vm_compute` and :tacn:`native_compute` when
+   relying on untrusted files.
+
+   Safe-requiring an already safe-required library is a no-op;
+   safe-requiring an already fully loaded library uses the fully loaded
+   version.  The converse is not supported:
+
+   .. exn:: Cannot unsafe-require library @qualid because it was previously required with (safe).
+
+      A plain :cmd:`Require` was used on a library previously loaded with
+      ``Require (safe)``, directly or as a dependency.
+
 .. cmd:: Print Libraries
 
    This command displays the list of library files loaded in the
