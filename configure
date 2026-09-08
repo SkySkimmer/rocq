@@ -7,7 +7,7 @@ configure=./tools/configure/configure.exe
 ## Check that dune is available, provide an error message otherwise
 if ! command -v dune > /dev/null
 then
-    1>&2 echo "Dune could not be found, please ensure you have a working OCaml enviroment"
+    1>&2 echo "Dune could not be found, please ensure you have a working OCaml environment."
     exit 1
 fi
 
