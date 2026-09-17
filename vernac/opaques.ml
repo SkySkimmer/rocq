@@ -80,6 +80,10 @@ let set_opaque_disk i (c, priv) t =
 
 let current_opaques = Summary.state
 
+let declare_manual_opaque i body =
+  let () = assert (not @@ Opaqueproof.HandleMap.mem i !current_opaques) in
+  current_opaques := Opaqueproof.HandleMap.add i (OpaqueValue body) !current_opaques
+
 let declare_defined_opaque ?feedback_id i (body : Safe_typing.private_constants const_entry_body) =
   (* Note that the environment in which the variable is checked it the one when
      the thunk is evaluated, not the one where this function is called. It does

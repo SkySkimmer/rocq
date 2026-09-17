@@ -627,6 +627,14 @@ val is_local_constant : Constant.t -> bool
 (** [true] on constants declared Local and not from the current
     interactive module (or its parents). *)
 
+val register_constant :
+  Loc.t option ->
+  Names.Constant.t ->
+  Decls.logical_kind ->
+  ?user_warns:Globnames.extended_global_reference UserWarn.with_qf ->
+  Locality.import_status ->
+  unit
+
 (** {6 For internal support, do not use}  *)
 
 module Internal : sig
