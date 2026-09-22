@@ -580,7 +580,7 @@ let section_context_of_opaque_proof_entry (type a b) (entry : (a, b) effect_entr
   let () = if Aux_file.recording () then record_aux env hyp_typ hyp_def in
   Environ.really_needed env (Id.Set.union hyp_typ hyp_def)
 
-let cast_opaque_proof_entry (type a b) (entry : (a, b) effect_entry) (e : a pproof_entry) : b Entries.opaque_entry * _ =
+let cast_opaque_proof_entry (type a b) (entry : (a, b) effect_entry) (e : a pproof_entry) : b Entries.opaque_entry * _ * _ =
   let typ = match e.proof_entry_type with
   | None -> assert false
   | Some typ -> typ
@@ -600,7 +600,13 @@ let cast_opaque_proof_entry (type a b) (entry : (a, b) effect_entry) (e : a ppro
     opaque_entry_type = Vars.subst_univs_level_constr usubst typ;
     opaque_entry_universes = univ_entry;
   },
+  usubst,
   ctx
+
+let subst_delayed_body usubst ((body,ctx),eff) : _ Entries.proof_output =
+  let body = Vars.subst_univs_level_constr usubst body in
+  let ctx = on_snd (UVars.subst_univs_constraints (snd usubst)) ctx in
+  (body, ctx), eff
 
 let feedback_axiom () = Feedback.(feedback AddedAxiom)
 
@@ -625,16 +631,17 @@ let declare_constant ~loc ?(local = Locality.ImportDefaultBehavior) ~name ~kind 
       | Default { body; opaque = Opaque (body_uctx, eff) } ->
         let body = ((body, body_uctx), SideEff.get eff) in
         let de = { de with proof_entry_body = body } in
-        let cd, ctx = cast_opaque_proof_entry ImmediateEffectEntry de in
+        let cd, usubst, ctx = cast_opaque_proof_entry ImmediateEffectEntry de in
         let ubinders = make_ubinders ctx de.proof_entry_universes in
+        let body = subst_delayed_body usubst body in
         Entries.OpaqueEntry cd, false, ubinders, Some (Future.from_val body, None), ctx
       | DeferredOpaque { body; feedback_id } ->
         let map (body, eff) = body, SideEff.get eff in
         let body = Future.chain body map in
         let de = { de with proof_entry_body = body } in
-        let cd, ctx = cast_opaque_proof_entry DeferredEffectEntry de in
+        let cd, usubst, ctx = cast_opaque_proof_entry DeferredEffectEntry de in
         let ubinders = make_ubinders ctx de.proof_entry_universes in
-        Entries.OpaqueEntry cd, false, ubinders, Some (body, feedback_id), ctx
+        Entries.OpaqueEntry cd, false, ubinders, Some (Future.chain body (subst_delayed_body usubst), feedback_id), ctx
       end
     | ParameterEntry e ->
       let usubst, univ_entry, ctx = extract_monomorphic (fst e.parameter_entry_universes) in
@@ -705,7 +712,7 @@ let declare_private_constant ?role ?ts ~name ~opaque de effs =
       let de, ctx = cast_pure_proof_entry de in
       DefinitionEff de, ctx
     else
-      let de, ctx = cast_opaque_proof_entry PureEntry de in
+      let de, _, ctx = cast_opaque_proof_entry PureEntry de in
       OpaqueEff de, ctx
 
   in
