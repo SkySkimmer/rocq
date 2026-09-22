@@ -188,7 +188,7 @@ let declare_abstract ~name ~poly ~sign ~secsign ~opaque ~solve_tac env sigma con
     let effs = Evd.eval_side_effects sigma in
     let de, ctx =
       let usubst, univ_entry, ctx = extract_monomorphic (fst univs) in
-      let body = Vars.subst_univs_level_constr usubst typ in
+      let body = Vars.subst_univs_level_constr usubst body in
       let typ = Vars.subst_univs_level_constr usubst typ in
       if not opaque then
         Safe_typing.DefinitionEff { Entries.definition_entry_body = body;
