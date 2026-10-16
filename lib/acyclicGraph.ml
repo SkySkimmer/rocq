@@ -108,6 +108,7 @@ module Make (Point:Point) = struct
   (* Comparison on this type is pointer equality *)
   type canonical_node =
     { canon: Index.t;
+      nonroot : bool;
       ltle: bool PMap.t;  (* true: strict (lt) constraint.
                              false: weak  (le) constraint. *)
       gtge: PSet.t;
@@ -499,6 +500,7 @@ module Make (Point:Point) = struct
         (* Inserting the new root. *)
         let g = change_node g
             { root with ltle; gtge;
+                        nonroot = root.nonroot || List.exists (fun can -> can.nonroot) to_merge;
                         rank = max root.rank (rank_rest + 1); }
         in
 
@@ -612,6 +614,7 @@ module Make (Point:Point) = struct
     in
     let to_merge = find_to_merge [ucan] g.components in
     let fold g n =
+      let () = if n.nonroot then raise CycleDetected in
       let g = enter_equiv g n.canon None in
       (* Record the Set < u constraints *)
       let foldlt u strict accu = if strict then PSet.add u accu else accu in
@@ -656,13 +659,14 @@ module Make (Point:Point) = struct
       false
     with CycleDetected -> true
 
-  let add ?(rank=0) v g =
+  let add ?(nonroot=false) ?(rank=0) v g =
     if Index.mem v g.table then raise AlreadyDeclared
     else
       let () = assert (g.index > min_int) in
       let v, table = Index.fresh v g.table in
       let node = {
         canon = v;
+        nonroot;
         ltle = PMap.empty;
         gtge = PSet.empty;
         rank;

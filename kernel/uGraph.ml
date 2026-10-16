@@ -196,8 +196,8 @@ let enforce_leq_alg u v g =
     raise e
 
 exception AlreadyDeclared = G.AlreadyDeclared
-let add_universe u ~strict g =
-  let graph = G.add u g.graph in
+let add_universe ?nonroot u ~strict g =
+  let graph = G.add ?nonroot u g.graph in
   let d = if strict then Lt else Le in
   enforce_constraint (Level.set, d, u) { g with graph }
 

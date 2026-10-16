@@ -1506,9 +1506,9 @@ let add_quality_variable ?loc ?(check_fresh=true) ~name ~rigid uctx q =
   in
   { uctx with sort_variables; names }
 
-let add_universe ?loc name strict uctx u =
+let add_universe ?loc name ?nonroot strict uctx u =
   let initial_universes = UGraph.add_universe ~strict u uctx.initial_universes in
-  let universes = UGraph.add_universe ~strict u uctx.universes in
+  let universes = UGraph.add_universe ?nonroot ~strict u uctx.universes in
   let local = PContextSet.add_level u uctx.local in
   let names =
     match name with
@@ -1531,7 +1531,7 @@ let new_univ_level_variable ?loc rigid name uctx =
       let univ_variables = UnivFlex.add u ~algebraic uctx.univ_variables in
       { uctx with univ_variables }
   in
-  let uctx = add_universe ?loc name false uctx u in
+  let uctx = add_universe ?loc ~nonroot:(Option.has_some name) name false uctx u in
   uctx, u
 
 let add_forgotten_univ uctx u = add_universe None true uctx u

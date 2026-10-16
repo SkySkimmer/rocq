@@ -37,7 +37,7 @@ module Make (Point:Point) : sig
   val check_invariants : required_canonical:(Point.t -> bool) -> t -> unit
 
   exception AlreadyDeclared
-  val add : ?rank:int -> Point.t -> t -> t
+  val add : ?nonroot:bool -> ?rank:int -> Point.t -> t -> t
   (** All points must be pre-declared through this function before
      they can be mentioned in the others. NB: use a large [rank] to
      keep the node canonical *)

@@ -76,7 +76,7 @@ val enforce_leq_alg : Univ.Universe.t -> Univ.Universe.t -> t -> Univ.UnivConstr
 
 exception AlreadyDeclared
 
-val add_universe : Level.t -> strict:bool -> t -> t
+val add_universe : ?nonroot:bool -> Level.t -> strict:bool -> t -> t
 
 (** Check that the universe levels are declared. *)
 val check_declared_universes : t -> Univ.Level.Set.t -> (unit, Univ.Level.Set.t) result
